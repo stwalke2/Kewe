@@ -1,1 +1,1 @@
-We picked Supplier Invoice (or X) as the first vertical slice because
+We picked Supplier Invoice as the first vertical slice because it shows a simple transaction from Draft to Submission to Approved to Posted to Paid.  Should prove out the canonical object model, workflow, audit, role approvals, posting action, ledger abstraction.
