@@ -33,6 +33,6 @@ The MVP will include:
 - All objects are audit-tracked
 - Effective dating supported where needed
 
-## 5. MVP Slice (TBD)
+## 5. MVP Slice
 
 - Supplier Invoice
