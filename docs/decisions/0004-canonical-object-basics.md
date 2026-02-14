@@ -1,8 +1,11 @@
 - unique id
+- reference id
 - name
 - hierarchy
 - type
+- subtype
 - status
+- visibility
 - effectiveDates
 - auditFields
 - metadata
