@@ -6,6 +6,10 @@
 - Scaffold Spring Boot project
 - Local MongoDB setup
 - Application runs
+ MVP slice selected and recorded
+ Canonical object rules documented
+ Working agreement in AGENTS.md
+ First milestone backlog created
 
 ## Milestone 1 – Core Engine
 - Implement CanonicalObject base class
