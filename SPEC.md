@@ -35,4 +35,4 @@ The MVP will include:
 
 ## 5. MVP Slice (TBD)
 
-(To be finalized: Supplier Invoice / Expense / Student Account, etc.)
+- Supplier Invoice
