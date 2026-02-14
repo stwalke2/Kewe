@@ -1,0 +1,10 @@
+- unique id
+- name
+- hierarchy
+- type
+- status
+- effectiveDates
+- auditFields
+- metadata
+- tags/dimensions
+- attachments
