@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
@@ -24,6 +25,7 @@ public class SupplierInvoiceService {
     }
 
     public SupplierInvoice createDraft(SupplierInvoiceDTO dto) {
+        validateDraftFields(dto);
         SupplierInvoice invoice = mapToEntity(dto);
         invoice.setType("SupplierInvoice");
         invoice.setStatus(STATUS_DRAFT);
@@ -39,8 +41,42 @@ public class SupplierInvoiceService {
                         "Supplier invoice not found: " + id));
     }
 
+    public List<SupplierInvoiceDTO> getAll() {
+        return repository.findAll().stream().map(this::mapToDTO).toList();
+    }
+
+    public SupplierInvoice updateDraft(String id, SupplierInvoiceDTO dto) {
+        SupplierInvoice invoice = getById(id);
+        if (!STATUS_DRAFT.equals(invoice.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only Draft invoices can be edited");
+        }
+        validateDraftFields(dto);
+
+        invoice.setSupplierId(dto.getSupplierId());
+        invoice.setInvoiceNumber(dto.getInvoiceNumber());
+        invoice.setInvoiceDate(dto.getInvoiceDate());
+        invoice.setAccountingDate(dto.getAccountingDate());
+        invoice.setCurrency(dto.getCurrency());
+        invoice.setInvoiceAmount(dto.getInvoiceAmount());
+        invoice.setMemo(dto.getMemo());
+        invoice.setLines(mapLines(dto.getLines()));
+        invoice.setAttachmentsMetadata(mapAttachments(dto.getAttachmentsMetadata()));
+        invoice.setUpdatedAt(Instant.now());
+        invoice.setUpdatedBy("system");
+        return repository.save(invoice);
+    }
+
     public SupplierInvoice submit(String id) {
-        return transition(id, STATUS_DRAFT, STATUS_SUBMITTED);
+        SupplierInvoice invoice = getById(id);
+        if (!STATUS_DRAFT.equals(invoice.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid status transition: " + invoice.getStatus() + " -> " + STATUS_SUBMITTED);
+        }
+        validateSubmitRules(invoice);
+        invoice.setStatus(STATUS_SUBMITTED);
+        invoice.setUpdatedAt(Instant.now());
+        invoice.setUpdatedBy("system");
+        return repository.save(invoice);
     }
 
     public SupplierInvoice approve(String id) {
@@ -61,6 +97,56 @@ public class SupplierInvoiceService {
         invoice.setUpdatedAt(Instant.now());
         invoice.setUpdatedBy("system");
         return repository.save(invoice);
+    }
+
+    private void validateDraftFields(SupplierInvoiceDTO dto) {
+        if (isBlank(dto.getSupplierId())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "supplierId is required for draft creation");
+        }
+        if (isBlank(dto.getInvoiceNumber())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invoiceNumber is required for draft creation");
+        }
+    }
+
+    private void validateSubmitRules(SupplierInvoice invoice) {
+        if (invoice.getInvoiceDate() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invoiceDate is required before submit");
+        }
+        if (invoice.getAccountingDate() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "accountingDate is required before submit");
+        }
+        if (isBlank(invoice.getCurrency())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "currency is required before submit");
+        }
+        if (invoice.getInvoiceAmount() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "invoiceAmount is required before submit");
+        }
+        if (invoice.getLines() == null || invoice.getLines().isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "at least one line is required before submit");
+        }
+
+        BigDecimal lineTotal = BigDecimal.ZERO;
+        for (int i = 0; i < invoice.getLines().size(); i++) {
+            SupplierInvoice.Line line = invoice.getLines().get(i);
+            if (isBlank(line.getDescription())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "line " + (i + 1) + " description is required before submit");
+            }
+            if (line.getAmount() == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "line " + (i + 1) + " amount is required before submit");
+            }
+            lineTotal = lineTotal.add(line.getAmount());
+        }
+
+        if (invoice.getInvoiceAmount().compareTo(lineTotal) != 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "invoiceAmount must equal the sum of all line amounts");
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private SupplierInvoice mapToEntity(SupplierInvoiceDTO dto) {

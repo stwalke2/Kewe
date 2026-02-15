@@ -14,6 +14,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/supplier-invoices")
 public class SupplierInvoiceController {
@@ -31,9 +33,19 @@ public class SupplierInvoiceController {
         return service.mapToDTO(created);
     }
 
+    @GetMapping
+    public List<SupplierInvoiceDTO> getAll() {
+        return service.getAll();
+    }
+
     @GetMapping("/{id}")
     public SupplierInvoiceDTO getById(@PathVariable String id) {
         return service.mapToDTO(service.getById(id));
+    }
+
+    @PutMapping("/{id}")
+    public SupplierInvoiceDTO updateDraft(@PathVariable String id, @Valid @RequestBody SupplierInvoiceDTO dto) {
+        return service.mapToDTO(service.updateDraft(id, dto));
     }
 
     @PutMapping("/{id}/submit")
