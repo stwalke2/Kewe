@@ -1,10 +1,7 @@
 package com.kewe.core.supplierinvoice.dto;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotEmpty;
-import jakarta.validation.constraints.NotNull;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -22,20 +19,14 @@ public class SupplierInvoiceDTO {
     @NotBlank
     private String invoiceNumber;
 
-    @NotNull
     private LocalDate invoiceDate;
 
-    @NotNull
     private LocalDate accountingDate;
 
-    @NotBlank
     private String currency;
 
-    @NotNull
-    @DecimalMin(value = "0.0", inclusive = false)
     private BigDecimal invoiceAmount;
 
-    @NotEmpty
     @Valid
     private List<LineDTO> lines = new ArrayList<>();
 
@@ -133,11 +124,8 @@ public class SupplierInvoiceDTO {
     }
 
     public static class LineDTO {
-        @NotBlank
         private String description;
 
-        @NotNull
-        @DecimalMin(value = "0.0", inclusive = false)
         private BigDecimal amount;
 
         public String getDescription() {
@@ -158,11 +146,8 @@ public class SupplierInvoiceDTO {
     }
 
     public static class AttachmentMetadataDTO {
-        @NotBlank
         private String fileName;
-        @NotBlank
         private String contentType;
-        @NotNull
         private Long size;
 
         public String getFileName() {
