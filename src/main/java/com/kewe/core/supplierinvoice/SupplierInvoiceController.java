@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/supplier-invoices")
@@ -52,4 +53,12 @@ public class SupplierInvoiceController {
         SupplierInvoice invoice = service.post(id);
         return new StatusTransitionResponse(invoice.getId(), invoice.getStatus());
     }
+
+    @GetMapping
+    public List<SupplierInvoiceDTO> getAll() {
+        return service.getAll().stream()
+                .map(service::mapToDTO)
+                .toList();
+    }
 }
+

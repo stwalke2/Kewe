@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class SupplierInvoiceIntegrationTest {
 
     @Container
-    static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0");
+    static final MongoDBContainer mongoDBContainer = new MongoDBContainer("mongo:7.0.14");
 
     @DynamicPropertySource
     static void configureMongo(DynamicPropertyRegistry registry) {

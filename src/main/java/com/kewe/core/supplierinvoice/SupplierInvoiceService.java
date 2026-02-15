@@ -126,4 +126,9 @@ public class SupplierInvoiceService {
         }).toList());
         return dto;
     }
+
+    public List<SupplierInvoice> getAll() {
+        return repository.findAll();
+    }
+
 }
