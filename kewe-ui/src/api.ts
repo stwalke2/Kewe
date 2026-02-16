@@ -1,10 +1,3 @@
-<<<<<<< HEAD
-import axios from "axios";
-
-export const api = axios.create({
-  baseURL: "http://localhost:8080",
-});
-=======
 import axios from 'axios';
 import type { CreateDraftRequest, SupplierInvoice, UpdateInvoiceRequest } from './api/types';
 
@@ -70,4 +63,3 @@ export function getErrorMessage(error: unknown): string {
 
   return 'Unexpected error';
 }
->>>>>>> c093879014582240042387c69d7fb369f430495b
