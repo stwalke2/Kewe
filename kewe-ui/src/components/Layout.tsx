@@ -10,6 +10,9 @@ export function Layout({ children }: PropsWithChildren) {
           <NavLink to="/" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')} end>
             Supplier Invoices
           </NavLink>
+          <NavLink to="/accounting-dimensions" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+            Accounting Dimensions
+          </NavLink>
         </nav>
       </aside>
       <div className="content-shell">
