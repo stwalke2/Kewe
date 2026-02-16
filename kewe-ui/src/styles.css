@@ -1,0 +1,251 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, sans-serif;
+  color: #0f172a;
+  background: #f3f5f8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  min-height: 100vh;
+}
+
+.sidebar {
+  background: #111827;
+  color: white;
+  padding: 1.5rem 1rem;
+}
+
+.brand {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.nav-link {
+  display: block;
+  color: #cbd5e1;
+  text-decoration: none;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+}
+
+.nav-link.active,
+.nav-link:hover {
+  color: white;
+  background: #1f2937;
+}
+
+.content-shell {
+  display: flex;
+  flex-direction: column;
+}
+
+.top-header {
+  background: white;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+main {
+  padding: 1.5rem;
+}
+
+.card {
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+}
+
+.page-header {
+  margin-bottom: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.table-card {
+  overflow: hidden;
+}
+
+.table-tools {
+  display: flex;
+  gap: 0.75rem;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.search,
+input {
+  width: 100%;
+  max-width: 420px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.55rem 0.7rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.7rem 0.45rem;
+  border-top: 1px solid #e5e7eb;
+}
+
+tbody tr {
+  cursor: pointer;
+}
+
+tbody tr:hover {
+  background: #f8fafc;
+}
+
+.amount {
+  text-align: right;
+}
+
+button {
+  border: 0;
+  border-radius: 8px;
+  padding: 0.55rem 0.95rem;
+  background: #2563eb;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+button.secondary {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-pill {
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-pill.draft {
+  background: #e2e8f0;
+}
+
+.status-pill.submitted {
+  background: #fef3c7;
+}
+
+.status-pill.approved {
+  background: #dbeafe;
+}
+
+.status-pill.posted {
+  background: #dcfce7;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 1rem;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.invoice-fields {
+  display: grid;
+  grid-template-columns: 160px 1fr;
+  row-gap: 0.55rem;
+}
+
+.invoice-fields dt {
+  color: #475569;
+}
+
+.invoice-fields dd {
+  margin: 0;
+}
+
+.message {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.7rem;
+  border-radius: 8px;
+}
+
+.message.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.message.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: grid;
+  place-items: center;
+}
+
+.modal {
+  width: 100%;
+  max-width: 520px;
+  background: white;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.modal-form {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.modal-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 500;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+@media (max-width: 900px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: none;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
