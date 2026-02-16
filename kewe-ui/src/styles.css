@@ -74,6 +74,12 @@ main {
   align-items: center;
 }
 
+.subtle {
+  color: #64748b;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
 .table-card {
   overflow: hidden;
 }
@@ -81,17 +87,25 @@ main {
 .table-tools {
   display: flex;
   gap: 0.75rem;
-  justify-content: space-between;
   margin-bottom: 0.75rem;
 }
 
 .search,
-input {
+input,
+select {
   width: 100%;
-  max-width: 420px;
   border: 1px solid #cbd5e1;
   border-radius: 8px;
   padding: 0.55rem 0.7rem;
+  background: white;
+}
+
+.search {
+  flex: 1;
+}
+
+select {
+  max-width: 180px;
 }
 
 table {
@@ -106,11 +120,11 @@ td {
   border-top: 1px solid #e5e7eb;
 }
 
-tbody tr {
+.clickable-rows tbody tr {
   cursor: pointer;
 }
 
-tbody tr:hover {
+.clickable-rows tbody tr:hover {
   background: #f8fafc;
 }
 
@@ -171,20 +185,47 @@ button:disabled {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
 }
 
-.invoice-fields {
+.form-grid {
   display: grid;
-  grid-template-columns: 160px 1fr;
-  row-gap: 0.55rem;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin: 1rem 0;
 }
 
-.invoice-fields dt {
-  color: #475569;
+.form-grid label {
+  display: grid;
+  gap: 0.35rem;
+  font-weight: 500;
 }
 
-.invoice-fields dd {
-  margin: 0;
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.actions-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.85rem;
+}
+
+.dirty-indicator {
+  color: #b45309;
+  font-weight: 600;
+}
+
+.totals-box {
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 0.8rem;
+  margin: 0.75rem 0;
+}
+
+.totals-box p {
+  margin: 0.25rem 0;
 }
 
 .message {
@@ -245,7 +286,16 @@ button:disabled {
     display: none;
   }
 
-  .detail-grid {
+  .detail-grid,
+  .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .table-tools {
+    flex-direction: column;
+  }
+
+  select {
+    max-width: none;
   }
 }

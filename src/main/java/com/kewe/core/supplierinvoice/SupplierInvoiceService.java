@@ -171,13 +171,17 @@ public class SupplierInvoiceService {
         dto.setCurrency(invoice.getCurrency());
         dto.setInvoiceAmount(invoice.getInvoiceAmount());
         dto.setMemo(invoice.getMemo());
+<<<<<<< HEAD
 
+=======
+>>>>>>> c093879014582240042387c69d7fb369f430495b
         dto.setLines(safeList(invoice.getLines()).stream().map(line -> {
             SupplierInvoiceDTO.LineDTO lineDTO = new SupplierInvoiceDTO.LineDTO();
             lineDTO.setDescription(line.getDescription());
             lineDTO.setAmount(line.getAmount());
             return lineDTO;
         }).toList());
+<<<<<<< HEAD
 
         dto.setAttachmentsMetadata(safeList(invoice.getAttachmentsMetadata()).stream().map(att -> {
             SupplierInvoiceDTO.AttachmentMetadataDTO attDTO = new SupplierInvoiceDTO.AttachmentMetadataDTO();
@@ -185,11 +189,20 @@ public class SupplierInvoiceService {
             attDTO.setContentType(att.getContentType());
             attDTO.setSize(att.getSize());
             return attDTO;
+=======
+        dto.setAttachmentsMetadata(safeList(invoice.getAttachmentsMetadata()).stream().map(attachment -> {
+            SupplierInvoiceDTO.AttachmentMetadataDTO attachmentDTO = new SupplierInvoiceDTO.AttachmentMetadataDTO();
+            attachmentDTO.setFileName(attachment.getFileName());
+            attachmentDTO.setContentType(attachment.getContentType());
+            attachmentDTO.setSize(attachment.getSize());
+            return attachmentDTO;
+>>>>>>> c093879014582240042387c69d7fb369f430495b
         }).toList());
 
         return dto;
     }
 
+<<<<<<< HEAD
     private SupplierInvoice mapToEntity(SupplierInvoiceDTO dto) {
         SupplierInvoice invoice = new SupplierInvoice();
         applyUpdatableFields(invoice, dto);
@@ -260,5 +273,7 @@ public class SupplierInvoiceService {
     private ResponseStatusException notFound(String message) {
         return new ResponseStatusException(HttpStatus.NOT_FOUND, message);
     }
+=======
+>>>>>>> c093879014582240042387c69d7fb369f430495b
 }
 
