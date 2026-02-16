@@ -11,7 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/dimensions/{typeCode}")
+@RequestMapping({"/api/dimensions/{typeCode}", "/dimensions/{typeCode}"})
 public class DimensionNodeController {
 
     private final DimensionNodeService service;
