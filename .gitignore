@@ -17,3 +17,7 @@ Thumbs.db
 application-local.yml
 application-local.yaml
 
+
+# Frontend
+kewe-ui/node_modules/
+kewe-ui/dist/
