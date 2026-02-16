@@ -18,6 +18,7 @@ The backend endpoints used by this UI are:
 - `GET /supplier-invoices`
 - `GET /supplier-invoices/{id}`
 - `POST /supplier-invoices`
+- `PUT /supplier-invoices/{id}`
 - `PUT /supplier-invoices/{id}/submit`
 - `PUT /supplier-invoices/{id}/approve`
 - `PUT /supplier-invoices/{id}/post`
@@ -41,4 +42,10 @@ Vite proxy rewrites `/api` to the backend root so:
 
 Configured in `vite.config.ts`.
 
-If you run UI without Vite proxy in another environment, backend CORS would need to allow the UI origin.
+## Quick Manual QA Checklist
+- List page supports search + status filter + refresh + last loaded timestamp.
+- Create Draft opens detail for the newly created invoice.
+- Detail page allows Draft-only editing for header fields and lines.
+- Save persists edits; Cancel reverts to last loaded state.
+- Workflow buttons show only the next valid action (`Submit` -> `Approve` -> `Post`).
+- Success/error banners are shown after save/transition operations.

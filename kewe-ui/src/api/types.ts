@@ -35,3 +35,15 @@ export interface CreateDraftRequest {
   lines?: InvoiceLine[];
   memo?: string;
 }
+
+export interface UpdateInvoiceRequest {
+  supplierId: string;
+  invoiceNumber: string;
+  invoiceDate?: string;
+  accountingDate?: string;
+  currency?: string;
+  invoiceAmount?: number;
+  lines: InvoiceLine[];
+  memo?: string;
+  attachmentsMetadata?: AttachmentMetadata[];
+}
