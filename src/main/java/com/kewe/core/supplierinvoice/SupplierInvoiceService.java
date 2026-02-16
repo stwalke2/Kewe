@@ -197,13 +197,13 @@ public class SupplierInvoiceService {
         dto.setCurrency(invoice.getCurrency());
         dto.setInvoiceAmount(invoice.getInvoiceAmount());
         dto.setMemo(invoice.getMemo());
-        dto.setLines(invoice.getLines().stream().map(line -> {
+        dto.setLines(safeList(invoice.getLines()).stream().map(line -> {
             SupplierInvoiceDTO.LineDTO lineDTO = new SupplierInvoiceDTO.LineDTO();
             lineDTO.setDescription(line.getDescription());
             lineDTO.setAmount(line.getAmount());
             return lineDTO;
         }).toList());
-        dto.setAttachmentsMetadata(invoice.getAttachmentsMetadata().stream().map(attachment -> {
+        dto.setAttachmentsMetadata(safeList(invoice.getAttachmentsMetadata()).stream().map(attachment -> {
             SupplierInvoiceDTO.AttachmentMetadataDTO attachmentDTO = new SupplierInvoiceDTO.AttachmentMetadataDTO();
             attachmentDTO.setFileName(attachment.getFileName());
             attachmentDTO.setContentType(attachment.getContentType());
@@ -211,10 +211,6 @@ public class SupplierInvoiceService {
             return attachmentDTO;
         }).toList());
         return dto;
-    }
-
-    public List<SupplierInvoice> getAll() {
-        return repository.findAll();
     }
 
 }
