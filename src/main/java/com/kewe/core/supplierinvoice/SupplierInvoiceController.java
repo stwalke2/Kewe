@@ -4,18 +4,8 @@ import com.kewe.core.supplierinvoice.dto.StatusTransitionResponse;
 import com.kewe.core.supplierinvoice.dto.SupplierInvoiceDTO;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
-<<<<<<< HEAD
 import org.springframework.web.bind.annotation.*;
-=======
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
->>>>>>> c093879014582240042387c69d7fb369f430495b
+
 
 import java.util.List;
 
