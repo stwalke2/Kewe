@@ -2,21 +2,29 @@
 
 Education-focused ERP/CRM platform built from first principles.
 
-## Vision
-A modern, object-oriented, event-driven system designed specifically for educational institutions.
+## Current Scope
+This repository currently contains:
+- Spring Boot backend (`/src`) with Supplier Invoice MVP endpoints.
+- React + Vite frontend (`/kewe-ui`) for Supplier Invoice workflow UI.
 
-## Current Phase
-Phase 0 – Architecture & Domain Definition
+## Backend (Spring Boot)
+### Run
+```bash
+./gradlew bootRun
+```
 
-## Tech Stack (Initial)
-- Java
-- Spring Boot
-- MongoDB
-- React (future)
-- GitHub for version control
+Default URL: `http://localhost:8080`
 
-## How to Run
-(Not applicable yet – scaffolding phase)
+## Frontend (Vite + React)
+### Run
+```bash
+cd kewe-ui
+npm install
+npm run dev
+```
 
-## Project Status
-Spec and architecture definition in progress.
+Default URL: `http://localhost:5173`
+
+The frontend uses a Vite dev proxy and calls `/api/...`, which is rewritten to the backend root (`http://localhost:8080`).
+
+For complete frontend details, see `kewe-ui/README.md`.
