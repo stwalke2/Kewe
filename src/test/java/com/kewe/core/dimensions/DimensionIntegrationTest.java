@@ -147,6 +147,13 @@ class DimensionIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code=='GRAND')].path").exists());
     }
 
+
+    @Test
+    void shouldServeDimensionNodeEndpointsWithoutApiPrefix() throws Exception {
+        mockMvc.perform(get("/dimensions/SPEND_ITEM/tree"))
+                .andExpect(status().isOk());
+    }
+
     @Test
     void shouldLookupMappings() throws Exception {
         String spendItems = mockMvc.perform(get("/api/dimensions/SPEND_ITEM/tree"))
