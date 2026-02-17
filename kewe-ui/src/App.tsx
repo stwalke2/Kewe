@@ -8,10 +8,11 @@ function App() {
   return (
     <Layout>
       <Routes>
-        <Route path="/" element={<InvoiceListPage />} />
-        <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
+        <Route path="/" element={<Navigate to="/supplier-invoices" replace />} />
+        <Route path="/supplier-invoices" element={<InvoiceListPage />} />
+        <Route path="/supplier-invoices/:id" element={<InvoiceDetailPage />} />
         <Route path="/accounting-dimensions" element={<AccountingDimensionsPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to="/supplier-invoices" replace />} />
       </Routes>
     </Layout>
   );

@@ -5,5 +5,5 @@ interface Props {
 }
 
 export function StatusPill({ status }: Props) {
-  return <span className={`status-pill ${status.toLowerCase()}`}>{status}</span>;
+  return <span className={`status-pill status-${status.toLowerCase()}`}>{status}</span>;
 }

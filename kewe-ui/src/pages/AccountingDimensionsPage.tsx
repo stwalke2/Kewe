@@ -234,17 +234,17 @@ export function AccountingDimensionsPage() {
   }
 
   return (
-    <section>
-      <div className="page-header card">
+    <section className="page-section">
+      <div className="page-header-row">
         <div>
           <h2>Accounting Dimensions</h2>
-          <p>Dimension setup + hierarchy + mappings.</p>
+          <p>Dimension setup, hierarchy management, and mapping maintenance.</p>
         </div>
       </div>
 
-      <div className="card actions-row">
-        <button className={activeTab === 'tree' ? '' : 'secondary'} onClick={() => setActiveTab('tree')}>Hierarchy</button>
-        <button className={activeTab === 'mappings' ? '' : 'secondary'} onClick={() => setActiveTab('mappings')}>Mappings</button>
+      <div className="card actions-row tab-row">
+        <button className={activeTab === 'tree' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setActiveTab('tree')}>Hierarchy</button>
+        <button className={activeTab === 'mappings' ? 'btn btn-primary' : 'btn btn-secondary'} onClick={() => setActiveTab('mappings')}>Mappings</button>
       </div>
 
       {error && (
@@ -266,7 +266,7 @@ export function AccountingDimensionsPage() {
             </select>
             <input className="search" value={query} placeholder="Search" onChange={(e) => setQuery(e.target.value)} />
             <label><input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} /> Show inactive</label>
-            <button className="secondary" onClick={() => void loadNodes()}>Refresh</button>
+            <button className="btn btn-secondary" onClick={() => void loadNodes()}>Refresh</button>
           </div>
 
           <div className="detail-grid">
@@ -282,8 +282,8 @@ export function AccountingDimensionsPage() {
                       <td>{node.status}</td>
                       <td>{node.parentId ? nodeNameById.get(node.parentId) ?? node.parentId : 'Top Level'}</td>
                       <td>
-                        <button className="secondary" onClick={(event) => { event.stopPropagation(); void moveWithinHierarchy(node, 'up'); }}>↑</button>{' '}
-                        <button className="secondary" onClick={(event) => { event.stopPropagation(); void moveWithinHierarchy(node, 'down'); }}>↓</button>
+                        <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); void moveWithinHierarchy(node, 'up'); }}>↑</button>{' '}
+                        <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); void moveWithinHierarchy(node, 'down'); }}>↓</button>
                       </td>
                     </tr>
                   ))}
@@ -303,12 +303,12 @@ export function AccountingDimensionsPage() {
                 </label>
               </div>
               <div className="actions-row">
-                <button onClick={() => void saveNode()} disabled={isSavingNode}>{nodeForm.id ? 'Update Dimension' : 'Add Dimension'}</button>
-                <button className="secondary" onClick={() => setNodeForm(emptyNodeForm)}>Clear</button>
+                <button className="btn btn-primary" onClick={() => void saveNode()} disabled={isSavingNode}>{nodeForm.id ? 'Update Dimension' : 'Add Dimension'}</button>
+                <button className="btn btn-secondary" onClick={() => setNodeForm(emptyNodeForm)}>Clear</button>
                 {!!nodeForm.id && (
                   <>
-                    <button className="secondary" onClick={() => void moveDimensionNode(selectedType, nodeForm.id, undefined).then(loadNodes)}>Move to Top Hierarchy</button>
-                    <button className="secondary" onClick={() => {
+                    <button className="btn btn-secondary" onClick={() => void moveDimensionNode(selectedType, nodeForm.id, undefined).then(loadNodes)}>Move to Top Hierarchy</button>
+                    <button className="btn btn-secondary" onClick={() => {
                       const current = nodes.find((n) => n.id === nodeForm.id);
                       if (current) {
                         void setDimensionNodeStatus(selectedType, nodeForm.id, current.status === 'Active' ? 'Inactive' : 'Active').then(loadNodes);
@@ -357,7 +357,7 @@ export function AccountingDimensionsPage() {
                 <input placeholder="functionNodeId" value={mappingForm.functionNodeId ?? ''} onChange={(e) => setMappingForm({ ...mappingForm, functionNodeId: e.target.value })} />
               </>
             )}
-            <button onClick={() => void saveMapping()}>Save</button>
+            <button className="btn btn-primary" onClick={() => void saveMapping()}>Save</button>
           </div>
 
           <table>
@@ -368,7 +368,7 @@ export function AccountingDimensionsPage() {
                   <td>{row.mappingType}</td>
                   <td>{row.sourceTypeCode}: {nodeNameById.get(row.sourceNodeId ?? '') ?? row.sourceNodeId ?? row.sourceKey}</td>
                   <td>{row.targetTypeCode}: {nodeNameById.get(row.targetNodeId) ?? row.targetNodeId}</td>
-                  <td><button className="secondary" onClick={() => void deleteMappingRow(row)}>Delete</button></td>
+                  <td><button className="btn btn-secondary" onClick={() => void deleteMappingRow(row)}>Delete</button></td>
                 </tr>
               ))}
             </tbody>
