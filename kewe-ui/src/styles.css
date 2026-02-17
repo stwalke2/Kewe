@@ -103,11 +103,11 @@ button, .btn {
   font-size: 0.9rem;
   transition: background-color 160ms ease, color 160ms ease, border-color 160ms ease, transform 150ms ease;
 }
-.btn-primary, button:not(.btn-secondary):not(.segment) {
+.btn-primary, button:not(.btn-secondary):not(.segment):not(.sort-header) {
   background: var(--primary);
   color: #fff;
 }
-.btn-primary:hover, button:not(.btn-secondary):not(.segment):hover { background: var(--primary-hover); }
+.btn-primary:hover, button:not(.btn-secondary):not(.segment):not(.sort-header):hover { background: var(--primary-hover); }
 .btn:hover, button:hover { transform: translateY(-1px); }
 .btn-secondary {
   background: #fff;
@@ -122,23 +122,45 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 table { width: 100%; border-collapse: collapse; }
 th, td { text-align: left; padding: 0.95rem 0.55rem; border-top: 1px solid #edf0f5; vertical-align: middle; }
-th { color: #667085; font-size: 0.8rem; font-weight: 600; }
+th {
+  color: #667085;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  border-top: 0;
+  border-bottom: 1px solid #edf0f5;
+  padding-top: 0.66rem;
+  padding-bottom: 0.66rem;
+  background: transparent;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+th:hover { background: #f9fafb; color: #475467; }
 .sort-header {
   border: 0;
   background: transparent;
+  border-radius: 0;
   padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.32rem;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
-  transition: color 160ms ease;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  transition: color 150ms ease;
 }
 .sort-header:hover { color: #344054; }
+.sort-header:hover { transform: none; }
 .sort-header.amount { justify-content: flex-end; width: 100%; }
-.sort-icons { display: inline-grid; line-height: 0.7; }
-.sort-chevron { color: #98a2b3; font-size: 0.6rem; transition: color 160ms ease; }
+.sort-icons {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  line-height: 1;
+}
+.sort-chevron { color: #98a2b3; font-size: 0.78rem; transition: color 150ms ease; }
 .sort-chevron.active { color: #111827; }
 .strong { font-weight: 600; color: #111827; }
 .amount { text-align: right; }
