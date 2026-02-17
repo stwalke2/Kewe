@@ -15,13 +15,13 @@ From repository root:
 ```
 
 The backend endpoints used by this UI are:
-- `GET /supplier-invoices`
-- `GET /supplier-invoices/{id}`
-- `POST /supplier-invoices`
-- `PUT /supplier-invoices/{id}`
-- `PUT /supplier-invoices/{id}/submit`
-- `PUT /supplier-invoices/{id}/approve`
-- `PUT /supplier-invoices/{id}/post`
+- `GET /api/supplier-invoices`
+- `GET /api/supplier-invoices/{id}`
+- `POST /api/supplier-invoices`
+- `PUT /api/supplier-invoices/{id}`
+- `PUT /api/supplier-invoices/{id}/submit`
+- `PUT /api/supplier-invoices/{id}/approve`
+- `PUT /api/supplier-invoices/{id}/post`
 
 ## Run Frontend
 From `/kewe-ui`:
@@ -38,7 +38,7 @@ Open:
 ## API Proxy / CORS
 The UI always calls `/api/...` via Axios.
 Vite proxy rewrites `/api` to the backend root so:
-- `/api/supplier-invoices` -> `http://localhost:8080/supplier-invoices`
+- `/api/supplier-invoices` -> `http://localhost:8080/api/supplier-invoices`
 
 Configured in `vite.config.ts`.
 

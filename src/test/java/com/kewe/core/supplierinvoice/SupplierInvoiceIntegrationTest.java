@@ -44,7 +44,7 @@ class SupplierInvoiceIntegrationTest {
     void shouldRunSupplierInvoiceLifecycleDraftToPosted() throws Exception {
         String draftPayload = validDraftPayload();
 
-        String createResponse = mockMvc.perform(post("/supplier-invoices")
+        String createResponse = mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftPayload))
                 .andExpect(status().isCreated())
@@ -57,15 +57,15 @@ class SupplierInvoiceIntegrationTest {
         String id = created.get("id").asText();
         assertThat(id).isNotBlank();
 
-        mockMvc.perform(put("/supplier-invoices/{id}/submit", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/submit", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("Submitted"));
 
-        mockMvc.perform(put("/supplier-invoices/{id}/approve", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/approve", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("Approved"));
 
-        mockMvc.perform(put("/supplier-invoices/{id}/post", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/post", id))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("Posted"));
     }
@@ -79,20 +79,31 @@ class SupplierInvoiceIntegrationTest {
                 }
                 """;
 
-        mockMvc.perform(post("/supplier-invoices")
+        mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftPayload))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("Draft"));
 
-        mockMvc.perform(get("/supplier-invoices"))
+        mockMvc.perform(get("/api/supplier-invoices"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].id").exists());
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$").isArray())
+                .andExpect(jsonPath("$[0].id").exists())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().string(org.hamcrest.Matchers.not(org.hamcrest.Matchers.containsString("No static resource"))));
+    }
+
+    @Test
+    void shouldReturnNotFoundForMissingApiRoute() throws Exception {
+        mockMvc.perform(get("/api/does-not-exist"))
+                .andExpect(status().isNotFound())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.content().contentTypeCompatibleWith(MediaType.APPLICATION_PROBLEM_JSON))
+                .andExpect(jsonPath("$.status").value(404));
     }
 
     @Test
     void shouldRejectSubmitWhenRequiredFieldsAreMissing() throws Exception {
-        String createResponse = mockMvc.perform(post("/supplier-invoices")
+        String createResponse = mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -107,7 +118,7 @@ class SupplierInvoiceIntegrationTest {
 
         String id = objectMapper.readTree(createResponse).get("id").asText();
 
-        mockMvc.perform(put("/supplier-invoices/{id}/submit", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/submit", id))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("invoiceDate is required before submit"));
     }
@@ -129,7 +140,7 @@ class SupplierInvoiceIntegrationTest {
                 }
                 """;
 
-        String createResponse = mockMvc.perform(post("/supplier-invoices")
+        String createResponse = mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(draftPayload))
                 .andExpect(status().isCreated())
@@ -139,14 +150,14 @@ class SupplierInvoiceIntegrationTest {
 
         String id = objectMapper.readTree(createResponse).get("id").asText();
 
-        mockMvc.perform(put("/supplier-invoices/{id}/submit", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/submit", id))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("invoiceAmount must equal the sum of all line amounts"));
     }
 
     @Test
     void shouldAllowUpdatesOnlyForDraftInvoices() throws Exception {
-        String createResponse = mockMvc.perform(post("/supplier-invoices")
+        String createResponse = mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(validDraftPayload()))
                 .andExpect(status().isCreated())
@@ -156,7 +167,7 @@ class SupplierInvoiceIntegrationTest {
 
         String id = objectMapper.readTree(createResponse).get("id").asText();
 
-        mockMvc.perform(put("/supplier-invoices/{id}", id)
+        mockMvc.perform(put("/api/supplier-invoices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -167,10 +178,10 @@ class SupplierInvoiceIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.invoiceNumber").value("INV-2026-UPDATED"));
 
-        mockMvc.perform(put("/supplier-invoices/{id}/submit", id))
+        mockMvc.perform(put("/api/supplier-invoices/{id}/submit", id))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(put("/supplier-invoices/{id}", id)
+        mockMvc.perform(put("/api/supplier-invoices/{id}", id)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -184,14 +195,14 @@ class SupplierInvoiceIntegrationTest {
 
     @Test
     void shouldReturnFieldErrorsWhenBeanValidationFails() throws Exception {
-        mockMvc.perform(post("/supplier-invoices")
+        mockMvc.perform(post("/api/supplier-invoices")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.fieldErrors").isArray())
                 .andExpect(jsonPath("$.fieldErrors[0].field").exists())
-                .andExpect(jsonPath("$.path").value("/supplier-invoices"));
+                .andExpect(jsonPath("$.path").value("/api/supplier-invoices"));
     }
 
     private String validDraftPayload() {
