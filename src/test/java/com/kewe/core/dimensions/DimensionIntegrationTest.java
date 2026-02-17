@@ -147,6 +147,47 @@ class DimensionIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code=='GRAND')].path").exists());
     }
 
+
+    @Test
+    void shouldUpdateNodeParentWithPut() throws Exception {
+        mockMvc.perform(post("/api/dimension-types")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "MOVE_WITH_UPDATE",
+                                  "name": "Move With Update",
+                                  "hierarchical": true,
+                                  "maxDepth": 5,
+                                  "entryBehavior": "OPTIONAL"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        String rootResp = mockMvc.perform(post("/api/dimensions/MOVE_WITH_UPDATE/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"ROOT\",\"name\":\"Root\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode root = objectMapper.readTree(rootResp);
+
+        String childResp = mockMvc.perform(post("/api/dimensions/MOVE_WITH_UPDATE/nodes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"CHILD\",\"name\":\"Child\"}"))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+        JsonNode child = objectMapper.readTree(childResp);
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/dimensions/MOVE_WITH_UPDATE/nodes/" + child.get("id").asText())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{" +
+                                "\"code\":\"CHILD\"," +
+                                "\"name\":\"Child\"," +
+                                "\"parentId\":\"" + root.get("id").asText() + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.parentId").value(root.get("id").asText()))
+                .andExpect(jsonPath("$.depth").value(1));
+    }
+
     @Test
     void shouldLookupMappings() throws Exception {
         String spendItems = mockMvc.perform(get("/api/dimensions/SPEND_ITEM/tree"))

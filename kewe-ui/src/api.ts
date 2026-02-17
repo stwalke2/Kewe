@@ -118,6 +118,10 @@ export async function updateDimensionNode(typeCode: string, nodeId: string, payl
   return request<DimensionNode>(`/dimensions/${typeCode}/nodes/${nodeId}`, { method: 'PUT', body: toBody(payload) });
 }
 
+export async function deleteDimensionNode(typeCode: string, nodeId: string): Promise<void> {
+  return request<void>(`/dimensions/${typeCode}/nodes/${nodeId}`, { method: 'DELETE' });
+}
+
 export async function setDimensionNodeStatus(typeCode: string, nodeId: string, status: 'Active' | 'Inactive'): Promise<DimensionNode> {
   return request<DimensionNode>(`/dimensions/${typeCode}/nodes/${nodeId}/status`, { method: 'PATCH', body: toBody({ status }) });
 }

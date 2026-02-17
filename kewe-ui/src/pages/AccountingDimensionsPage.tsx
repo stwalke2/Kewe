@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { fetchDimensionTree, fetchDimensionTypes, getErrorDetails } from '../api';
 import type { ApiErrorDetails, DimensionNode, DimensionType } from '../api/types';
 import { StatusPill } from '../components/StatusPill';
+import { getDimensionTypeLabel } from '../dimensionTypeLabels';
 
 type SortDirection = 'asc' | 'desc' | null;
 type NodeSortKey = 'name' | 'typeCode' | 'status';
@@ -37,7 +38,7 @@ export function AccountingDimensionsPage() {
 
   const nodeNameById = useMemo(() => {
     const map = new Map<string, string>();
-    nodes.forEach((node) => map.set(node.id, node.name));
+    nodes.forEach((node) => map.set(node.id, `${node.code} ${node.name}`));
     return map;
   }, [nodes]);
 
@@ -53,8 +54,7 @@ export function AccountingDimensionsPage() {
         return true;
       }
 
-      return [node.code, node.name, node.typeCode, node.status]
-        .filter(Boolean)
+      return [node.code, node.name, node.description ?? '', getDimensionTypeLabel(node.typeCode, types), node.status]
         .some((value) => value.toLowerCase().includes(normalized));
     });
 
@@ -63,13 +63,11 @@ export function AccountingDimensionsPage() {
     }
 
     return [...filtered].sort((a, b) => {
-      const left = a[sortKey];
-      const right = b[sortKey];
+      const left = sortKey === 'typeCode' ? getDimensionTypeLabel(a.typeCode, types) : a[sortKey];
+      const right = sortKey === 'typeCode' ? getDimensionTypeLabel(b.typeCode, types) : b[sortKey];
       return sortDirection === 'asc' ? left.localeCompare(right) : right.localeCompare(left);
     });
-  }, [nodes, selectedType, debouncedQuery, sortKey, sortDirection]);
-
-  const rowAnimationSeed = `${selectedType}-${debouncedQuery}-${sortKey ?? 'none'}-${sortDirection ?? 'none'}`;
+  }, [nodes, selectedType, debouncedQuery, sortKey, sortDirection, types]);
 
   async function loadTypes() {
     try {
@@ -100,147 +98,59 @@ export function AccountingDimensionsPage() {
   }
 
   const cycleSort = (column: NodeSortKey) => {
-    if (sortKey !== column) {
-      setSortKey(column);
-      setSortDirection('asc');
-      return;
-    }
-
-    if (sortDirection === 'asc') {
-      setSortDirection('desc');
-      return;
-    }
-
-    if (sortDirection === 'desc') {
-      setSortDirection(null);
-      setSortKey(null);
-      return;
-    }
-
+    if (sortKey !== column) return (setSortKey(column), setSortDirection('asc'));
+    if (sortDirection === 'asc') return setSortDirection('desc');
+    if (sortDirection === 'desc') return (setSortDirection(null), setSortKey(null));
     setSortDirection('asc');
   };
 
-  const sortClass = (column: NodeSortKey, direction: Exclude<SortDirection, null>) => {
-    if (sortKey === column && sortDirection === direction) {
-      return 'sort-chevron active';
-    }
-    return 'sort-chevron';
-  };
+  const sortClass = (column: NodeSortKey, direction: Exclude<SortDirection, null>) =>
+    sortKey === column && sortDirection === direction ? 'sort-chevron active' : 'sort-chevron';
 
   return (
     <section className="page-section">
       <div className="page-header-row">
         <div>
           <h2>Accounting Dimensions</h2>
-          <p>Search and review dimension hierarchy nodes.</p>
+          <p>Search and review dimensions.</p>
         </div>
         <div className="header-actions">
-          <button className="btn btn-secondary" onClick={() => void loadNodes()}>
-            Refresh
-          </button>
-          <button className="btn btn-primary" onClick={() => navigate('/accounting-dimensions/new')}>
-            New Dimension
-          </button>
+          <button className="btn btn-secondary" onClick={() => void loadNodes()}>Refresh</button>
+          <button className="btn btn-primary" onClick={() => navigate('/accounting-dimensions/new')}>New Dimension</button>
         </div>
       </div>
 
-      {error && (
-        <div className="message error">
-          <strong>Request error</strong>
-          <div>Status: {error.status ?? 'N/A'}</div>
-          <div>Endpoint: {error.endpoint ?? 'N/A'}</div>
-          <div>Message: {error.message}</div>
-        </div>
-      )}
+      {error && <div className="message error"><strong>Request error</strong><div>Message: {error.message}</div></div>}
 
       <div className="card table-card">
         <div className="filters-row">
-          <input
-            className="search"
-            value={query}
-            placeholder="Search code, name, type, or status"
-            onChange={(event) => setQuery(event.target.value)}
-          />
+          <input className="search" value={query} placeholder="Search code, name, description, type, or status" onChange={(event) => setQuery(event.target.value)} />
           <div className="segmented-control" role="tablist" aria-label="Filter dimension type">
-            <button className={selectedType === 'All' ? 'segment active' : 'segment'} onClick={() => setSelectedType('All')}>
-              All
-            </button>
+            <button className={selectedType === 'All' ? 'segment active' : 'segment'} onClick={() => setSelectedType('All')}>All</button>
             {types.map((type) => (
-              <button
-                key={type.code}
-                className={selectedType === type.code ? 'segment active' : 'segment'}
-                onClick={() => setSelectedType(type.code)}
-              >
-                {type.name}
-              </button>
+              <button key={type.code} className={selectedType === type.code ? 'segment active' : 'segment'} onClick={() => setSelectedType(type.code)}>{type.name}</button>
             ))}
           </div>
-          <label>
-            <input type="checkbox" checked={includeInactive} onChange={(event) => setIncludeInactive(event.target.checked)} /> Show inactive
-          </label>
+          <label><input type="checkbox" checked={includeInactive} onChange={(event) => setIncludeInactive(event.target.checked)} /> Show inactive</label>
         </div>
 
         {loading && <p>Loading dimensions…</p>}
 
         {!loading && (
           <table className="clickable-rows align-table">
-            <thead>
-              <tr>
-                <th>Code</th>
-                <th>
-                  <button className="sort-header" onClick={() => cycleSort('name')}>
-                    Name
-                    <span className="sort-icons">
-                      <span className={sortClass('name', 'asc')}>▲</span>
-                      <span className={sortClass('name', 'desc')}>▼</span>
-                    </span>
-                  </button>
-                </th>
-                <th>
-                  <button className="sort-header" onClick={() => cycleSort('typeCode')}>
-                    Type
-                    <span className="sort-icons">
-                      <span className={sortClass('typeCode', 'asc')}>▲</span>
-                      <span className={sortClass('typeCode', 'desc')}>▼</span>
-                    </span>
-                  </button>
-                </th>
-                <th>
-                  <button className="sort-header" onClick={() => cycleSort('status')}>
-                    Status
-                    <span className="sort-icons">
-                      <span className={sortClass('status', 'asc')}>▲</span>
-                      <span className={sortClass('status', 'desc')}>▼</span>
-                    </span>
-                  </button>
-                </th>
-                <th>Hierarchy</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Code</th><th>Name</th><th>Description</th><th><button className="sort-header" onClick={() => cycleSort('typeCode')}>Type<span className="sort-icons"><span className={sortClass('typeCode', 'asc')}>▲</span><span className={sortClass('typeCode', 'desc')}>▼</span></span></button></th><th><button className="sort-header" onClick={() => cycleSort('status')}>Status<span className="sort-icons"><span className={sortClass('status', 'asc')}>▲</span><span className={sortClass('status', 'desc')}>▼</span></span></button></th><th>Parent</th></tr></thead>
             <tbody>
-              {filteredAndSortedNodes.map((node, index) => (
-                <tr
-                  key={`${node.id}-${rowAnimationSeed}`}
-                  className="animated-row"
-                  style={{ animationDelay: `${Math.min(index * 22, 180)}ms` }}
-                  onClick={() => navigate(`/accounting-dimensions/${node.id}`)}
-                >
+              {filteredAndSortedNodes.map((node) => (
+                <tr key={node.id} onClick={() => navigate(`/accounting-dimensions/${node.id}`)}>
                   <td>{node.code}</td>
-                  <td>{'· '.repeat(node.depth)}{node.name}</td>
-                  <td>{node.typeCode}</td>
+                  <td>{node.name}</td>
+                  <td>{node.description || '—'}</td>
+                  <td>{getDimensionTypeLabel(node.typeCode, types)}</td>
                   <td><StatusPill status={node.status} /></td>
-                  <td>{node.parentId ? nodeNameById.get(node.parentId) ?? node.parentId : 'Top Level'}</td>
+                  <td>{node.parentId ? nodeNameById.get(node.parentId) ?? '—' : 'Top level'}</td>
                 </tr>
               ))}
-              {filteredAndSortedNodes.length === 0 && (
-                <tr>
-                  <td colSpan={5}>
-                    <div className="empty-state">
-                      <p>No dimensions match the current filters.</p>
-                    </div>
-                  </td>
-                </tr>
-              )}
+              {filteredAndSortedNodes.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No dimensions match the current filters.</p></div></td></tr>}
             </tbody>
           </table>
         )}
