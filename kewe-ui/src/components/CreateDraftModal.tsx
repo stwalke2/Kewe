@@ -30,7 +30,12 @@ export function CreateDraftModal({ onClose, onCreate }: Props) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
-        <h2>Create Draft Invoice</h2>
+        <div className="modal-header">
+          <div>
+            <h2>Create draft invoice</h2>
+            <p>Start a new supplier invoice in Draft status.</p>
+          </div>
+        </div>
         <form onSubmit={submit} className="modal-form">
           <label>
             Supplier ID *
@@ -67,11 +72,11 @@ export function CreateDraftModal({ onClose, onCreate }: Props) {
           {error && <p className="message error">{error}</p>}
 
           <div className="modal-actions">
-            <button type="button" className="secondary" onClick={onClose} disabled={isSubmitting}>
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
-            <button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating…' : 'Create Draft'}
+            <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+              {isSubmitting ? 'Creating…' : 'Create draft'}
             </button>
           </div>
         </form>

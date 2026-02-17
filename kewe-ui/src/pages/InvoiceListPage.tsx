@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { createDraft, fetchInvoices, getErrorMessage } from '../api';
+import { createDraft, fetchInvoices, getErrorDetails } from '../api';
 import type { InvoiceStatus, SupplierInvoice } from '../api/types';
 import { CreateDraftModal } from '../components/CreateDraftModal';
 import { StatusPill } from '../components/StatusPill';
@@ -10,11 +10,10 @@ const statuses: Array<InvoiceStatus | 'All'> = ['All', 'Draft', 'Submitted', 'Ap
 export function InvoiceListPage() {
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof getErrorDetails> | null>(null);
   const [query, setQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
   const [showModal, setShowModal] = useState(false);
-  const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -27,9 +26,8 @@ export function InvoiceListPage() {
     try {
       const data = await fetchInvoices();
       setInvoices(data);
-      setLastLoadedAt(new Date());
     } catch (e) {
-      setError(getErrorMessage(e));
+      setError(getErrorDetails(e));
     } finally {
       setLoading(false);
     }
@@ -55,76 +53,95 @@ export function InvoiceListPage() {
   const handleCreate = async (payload: Parameters<typeof createDraft>[0]) => {
     const created = await createDraft(payload);
     setShowModal(false);
-    navigate(`/invoices/${created.id}`);
+    navigate(`/supplier-invoices/${created.id}`);
     return created;
   };
 
   return (
-    <section>
-      <div className="page-header card">
+    <section className="page-section">
+      <div className="page-header-row">
         <div>
           <h2>Supplier Invoices</h2>
-          <p>Track invoice workflow from Draft to Posted.</p>
-          <p className="subtle">
-            Last loaded:{' '}
-            {lastLoadedAt ? lastLoadedAt.toLocaleString() : 'Never'}
-          </p>
+          <p>Track supplier invoices from draft creation through posting.</p>
         </div>
-        <button onClick={() => setShowModal(true)}>Create Draft</button>
+        <div className="header-actions">
+          <button className="btn btn-secondary" onClick={() => void loadInvoices()}>
+            Refresh
+          </button>
+          <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+            New invoice
+          </button>
+        </div>
       </div>
 
       <div className="card table-card">
-        <div className="table-tools">
+        <div className="filters-row">
           <input
             className="search"
-            placeholder="Search by invoice, supplier, or status"
+            placeholder="Search invoice number, supplier, or status"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value as InvoiceStatus | 'All')}
-          >
+          <div className="segmented-control" role="tablist" aria-label="Filter by status">
             {statuses.map((status) => (
-              <option key={status} value={status}>
+              <button
+                key={status}
+                className={statusFilter === status ? 'segment active' : 'segment'}
+                onClick={() => setStatusFilter(status)}
+              >
                 {status}
-              </option>
+              </button>
             ))}
-          </select>
-          <button className="secondary" onClick={() => void loadInvoices()}>
-            Refresh
-          </button>
+          </div>
+          <button className="btn btn-secondary">Date range</button>
         </div>
 
         {loading && <p>Loading invoices…</p>}
-        {error && <p className="message error">Unable to load invoices: {error}</p>}
+
+        {error && (
+          <div className="message error">
+            <strong>Request error</strong>
+            <div>Status: {error.status ?? 'N/A'}</div>
+            <div>Endpoint: {error.endpoint ?? 'N/A'}</div>
+            <div>Message: {error.message}</div>
+          </div>
+        )}
 
         {!loading && !error && (
-          <table className="clickable-rows">
+          <table className="clickable-rows align-table">
             <thead>
               <tr>
                 <th>Invoice #</th>
                 <th>Supplier</th>
                 <th>Invoice Date</th>
-                <th>Status</th>
                 <th className="amount">Amount</th>
+                <th>Status</th>
+                <th className="actions-col" />
               </tr>
             </thead>
             <tbody>
               {filtered.map((invoice) => (
-                <tr key={invoice.id} onClick={() => navigate(`/invoices/${invoice.id}`)}>
-                  <td>{invoice.invoiceNumber}</td>
+                <tr key={invoice.id} onClick={() => navigate(`/supplier-invoices/${invoice.id}`)}>
+                  <td className="strong">{invoice.invoiceNumber}</td>
                   <td>{invoice.supplierId}</td>
                   <td>{invoice.invoiceDate ?? '—'}</td>
+                  <td className="amount">{invoice.invoiceAmount?.toFixed(2) ?? '—'}</td>
                   <td>
                     <StatusPill status={invoice.status} />
                   </td>
-                  <td className="amount">{invoice.invoiceAmount?.toFixed(2) ?? '—'}</td>
+                  <td className="actions-col">⋯</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
-                  <td colSpan={5}>No invoices found for current filters.</td>
+                  <td colSpan={6}>
+                    <div className="empty-state">
+                      <p>No invoices matched your filters.</p>
+                      <button className="btn btn-primary" onClick={() => setShowModal(true)}>
+                        Create draft invoice
+                      </button>
+                    </div>
+                  </td>
                 </tr>
               )}
             </tbody>

@@ -151,13 +151,12 @@ export function InvoiceDetailPage() {
   };
 
   return (
-    <section>
-      <div className="page-header card">
+    <section className="page-section">
+      <div className="page-header-row">
         <div>
-          <p>
-            <Link to="/">← Back to list</Link>
-          </p>
-          <h2>Invoice Detail</h2>
+          <Link to="/supplier-invoices" className="back-link">← Back to list</Link>
+          <h2>Invoice detail</h2>
+          <p>Review header, line details, and workflow actions.</p>
         </div>
       </div>
 
@@ -165,184 +164,191 @@ export function InvoiceDetailPage() {
       {error && <p className="message error">Unable to load invoice: {error}</p>}
 
       {!loading && !error && invoice && draft && (
-        <div className="detail-grid">
-          <div className="card">
-            <div className="row">
-              <h3>{invoice.invoiceNumber}</h3>
-              <StatusPill status={invoice.status} />
-            </div>
-
-            <div className="form-grid">
-              <label>
-                Supplier ID
-                <input
-                  value={draft.supplierId}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) => setDraft({ ...draft, supplierId: event.target.value })}
-                />
-              </label>
-              <label>
-                Invoice Number
-                <input
-                  value={draft.invoiceNumber}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) => setDraft({ ...draft, invoiceNumber: event.target.value })}
-                />
-              </label>
-              <label>
-                Invoice Date
-                <input
-                  type="date"
-                  value={draft.invoiceDate ?? ''}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) =>
-                    setDraft({ ...draft, invoiceDate: event.target.value ? event.target.value : undefined })
-                  }
-                />
-              </label>
-              <label>
-                Accounting Date
-                <input
-                  type="date"
-                  value={draft.accountingDate ?? ''}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) =>
-                    setDraft({ ...draft, accountingDate: event.target.value ? event.target.value : undefined })
-                  }
-                />
-              </label>
-              <label>
-                Currency
-                <input
-                  value={draft.currency ?? ''}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) =>
-                    setDraft({ ...draft, currency: event.target.value ? event.target.value : undefined })
-                  }
-                />
-              </label>
-              <label>
-                Header Amount
-                <input
-                  type="number"
-                  step="0.01"
-                  value={draft.invoiceAmount ?? ''}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) =>
-                    setDraft({
-                      ...draft,
-                      invoiceAmount: event.target.value ? Number(event.target.value) : undefined,
-                    })
-                  }
-                />
-              </label>
-              <label className="full-width">
-                Memo
-                <input
-                  value={draft.memo ?? ''}
-                  disabled={!isDraftStatus || busy}
-                  onChange={(event) => setDraft({ ...draft, memo: event.target.value || undefined })}
-                />
-              </label>
-            </div>
-
-            {isDraftStatus && (
-              <div className="actions-row">
-                <button onClick={() => void handleSave()} disabled={!hasUnsavedChanges || busy}>
-                  {busy ? 'Saving…' : 'Save'}
-                </button>
-                <button className="secondary" onClick={handleCancel} disabled={!hasUnsavedChanges || busy}>
-                  Cancel
-                </button>
-                {hasUnsavedChanges && <span className="dirty-indicator">Unsaved changes</span>}
+        <div className="detail-grid align-detail">
+          <div className="detail-main-column">
+            <div className="card section-card">
+              <div className="row">
+                <h3>Invoice attributes</h3>
+                <StatusPill status={invoice.status} />
               </div>
-            )}
+              <div className="form-grid">
+                <label>
+                  Supplier ID
+                  <input
+                    value={draft.supplierId}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) => setDraft({ ...draft, supplierId: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Invoice Number
+                  <input
+                    value={draft.invoiceNumber}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) => setDraft({ ...draft, invoiceNumber: event.target.value })}
+                  />
+                </label>
+                <label>
+                  Invoice Date
+                  <input
+                    type="date"
+                    value={draft.invoiceDate ?? ''}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) =>
+                      setDraft({ ...draft, invoiceDate: event.target.value ? event.target.value : undefined })
+                    }
+                  />
+                </label>
+                <label>
+                  Accounting Date
+                  <input
+                    type="date"
+                    value={draft.accountingDate ?? ''}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) =>
+                      setDraft({ ...draft, accountingDate: event.target.value ? event.target.value : undefined })
+                    }
+                  />
+                </label>
+                <label>
+                  Currency
+                  <input
+                    value={draft.currency ?? ''}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) =>
+                      setDraft({ ...draft, currency: event.target.value ? event.target.value : undefined })
+                    }
+                  />
+                </label>
+                <label>
+                  Header Amount
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={draft.invoiceAmount ?? ''}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) =>
+                      setDraft({
+                        ...draft,
+                        invoiceAmount: event.target.value ? Number(event.target.value) : undefined,
+                      })
+                    }
+                  />
+                </label>
+                <label className="full-width">
+                  Memo
+                  <input
+                    value={draft.memo ?? ''}
+                    disabled={!isDraftStatus || busy}
+                    onChange={(event) => setDraft({ ...draft, memo: event.target.value || undefined })}
+                  />
+                </label>
+              </div>
 
-            {!isDraftStatus && <p>This invoice is locked because it is no longer in Draft status.</p>}
+              {isDraftStatus && (
+                <div className="actions-row">
+                  <button className="btn btn-primary" onClick={() => void handleSave()} disabled={!hasUnsavedChanges || busy}>
+                    {busy ? 'Saving…' : 'Save changes'}
+                  </button>
+                  <button className="btn btn-secondary" onClick={handleCancel} disabled={!hasUnsavedChanges || busy}>
+                    Reset
+                  </button>
+                  {hasUnsavedChanges && <span className="dirty-indicator">Unsaved changes</span>}
+                </div>
+              )}
+            </div>
+
+            <div className="card section-card">
+              <div className="row">
+                <h3>Line items</h3>
+                {isDraftStatus && (
+                  <button className="btn btn-secondary" onClick={addLine} disabled={busy}>
+                    Add line
+                  </button>
+                )}
+              </div>
+
+              {draft.lines.length === 0 && <p>No lines available.</p>}
+              {draft.lines.length > 0 && (
+                <table className="align-table">
+                  <thead>
+                    <tr>
+                      <th>Description</th>
+                      <th className="amount">Amount</th>
+                      {isDraftStatus && <th>Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {draft.lines.map((line, idx) => (
+                      <tr key={`${idx}-${line.description}`}>
+                        <td>
+                          {isDraftStatus ? (
+                            <input
+                              value={line.description ?? ''}
+                              disabled={busy}
+                              onChange={(event) => updateLine(idx, { description: event.target.value })}
+                            />
+                          ) : (
+                            line.description || '—'
+                          )}
+                        </td>
+                        <td className="amount">
+                          {isDraftStatus ? (
+                            <input
+                              type="number"
+                              step="0.01"
+                              value={line.amount}
+                              disabled={busy}
+                              onChange={(event) => updateLine(idx, { amount: Number(event.target.value) || 0 })}
+                            />
+                          ) : (
+                            line.amount?.toFixed(2) ?? '—'
+                          )}
+                        </td>
+                        {isDraftStatus && (
+                          <td>
+                            <button className="btn btn-secondary" onClick={() => deleteLine(idx)} disabled={busy}>
+                              Delete
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </div>
+
+          <aside className="card detail-side-panel">
+            <h3>Details</h3>
+            <dl className="kv-list">
+              <div><dt>Invoice #</dt><dd>{invoice.invoiceNumber}</dd></div>
+              <div><dt>Supplier</dt><dd>{invoice.supplierId}</dd></div>
+              <div><dt>Status</dt><dd><StatusPill status={invoice.status} /></dd></div>
+              <div><dt>Invoice Date</dt><dd>{invoice.invoiceDate ?? '—'}</dd></div>
+              <div><dt>Currency</dt><dd>{invoice.currency ?? '—'}</dd></div>
+              <div><dt>Line total</dt><dd>{lineTotal.toFixed(2)}</dd></div>
+            </dl>
 
             <div className="totals-box">
-              <p>
-                <strong>Line total (authoritative):</strong> {lineTotal.toFixed(2)}
-              </p>
-              <p>
-                <strong>Header amount:</strong> {draft.invoiceAmount?.toFixed(2) ?? '—'}
-              </p>
+              <p><strong>Header amount:</strong> {draft.invoiceAmount?.toFixed(2) ?? '—'}</p>
               {draft.invoiceAmount !== undefined && draft.invoiceAmount !== lineTotal && (
-                <p className="message error">Header amount differs from lines. Submit requires an exact match.</p>
+                <p className="message error">Header amount differs from line total. Submit requires a match.</p>
               )}
             </div>
 
             {nextAction && (
-              <button onClick={() => void handleTransition()} disabled={busy || hasUnsavedChanges}>
+              <button className="btn btn-primary full-width" onClick={() => void handleTransition()} disabled={busy || hasUnsavedChanges}>
                 {busy ? 'Processing…' : nextAction.charAt(0).toUpperCase() + nextAction.slice(1)}
               </button>
             )}
             {!nextAction && <p>This invoice has no further actions.</p>}
-            {hasUnsavedChanges && nextAction && <p>Save changes before running workflow actions.</p>}
+            {hasUnsavedChanges && nextAction && <p className="subtle">Save your edits before running workflow actions.</p>}
+            {!isDraftStatus && <p className="subtle">This invoice is read-only because it is no longer in Draft status.</p>}
 
             {message && <p className={`message ${message.kind}`}>{message.text}</p>}
-          </div>
-
-          <div className="card">
-            <div className="row">
-              <h3>Lines</h3>
-              {isDraftStatus && (
-                <button className="secondary" onClick={addLine} disabled={busy}>
-                  Add line
-                </button>
-              )}
-            </div>
-
-            {draft.lines.length === 0 && <p>No lines available.</p>}
-            {draft.lines.length > 0 && (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Description</th>
-                    <th className="amount">Amount</th>
-                    {isDraftStatus && <th>Actions</th>}
-                  </tr>
-                </thead>
-                <tbody>
-                  {draft.lines.map((line, idx) => (
-                    <tr key={`${idx}-${line.description}`}>
-                      <td>
-                        {isDraftStatus ? (
-                          <input
-                            value={line.description ?? ''}
-                            disabled={busy}
-                            onChange={(event) => updateLine(idx, { description: event.target.value })}
-                          />
-                        ) : (
-                          line.description || '—'
-                        )}
-                      </td>
-                      <td className="amount">
-                        {isDraftStatus ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={line.amount}
-                            disabled={busy}
-                            onChange={(event) => updateLine(idx, { amount: Number(event.target.value) || 0 })}
-                          />
-                        ) : (
-                          line.amount?.toFixed(2) ?? '—'
-                        )}
-                      </td>
-                      {isDraftStatus && (
-                        <td>
-                          <button className="secondary" onClick={() => deleteLine(idx)} disabled={busy}>
-                            Delete
-                          </button>
-                        </td>
-                      )}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
+          </aside>
         </div>
       )}
     </section>
