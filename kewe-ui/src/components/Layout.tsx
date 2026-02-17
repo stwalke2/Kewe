@@ -15,8 +15,11 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
 export function Layout({ children }: PropsWithChildren) {
   const location = useLocation();
   const isInvoiceDetail = location.pathname.startsWith('/supplier-invoices/');
+  const isDimensionDetail = location.pathname.startsWith('/accounting-dimensions/');
   const meta = isInvoiceDetail
     ? { title: 'Invoice Detail', subtitle: 'Review invoice details, lines, and workflow actions.' }
+    : isDimensionDetail
+      ? { title: 'Dimension Detail', subtitle: 'Manage dimension setup, hierarchy, and status actions.' }
     : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
 
   return (
@@ -36,7 +39,10 @@ export function Layout({ children }: PropsWithChildren) {
             >
               Supplier Invoices
             </NavLink>
-            <NavLink to="/accounting-dimensions" className={({ isActive }) => (isActive ? 'nav-link active' : 'nav-link')}>
+            <NavLink
+              to="/accounting-dimensions"
+              className={({ isActive }) => (isActive || isDimensionDetail ? 'nav-link active' : 'nav-link')}
+            >
               Accounting Dimensions
             </NavLink>
           </nav>
