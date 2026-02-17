@@ -8,12 +8,12 @@ import {
   getErrorDetails,
   moveDimensionNode,
   reorderDimensionNodes,
-  searchDimensionNodes,
   setDimensionNodeStatus,
   upsertMapping,
   updateDimensionNode,
 } from '../api';
 import type { ApiErrorDetails, DimensionMapping, DimensionNode, DimensionType } from '../api/types';
+import { StatusPill } from '../components/StatusPill';
 
 type MappingPath = 'item-to-ledger' | 'costcenter-to-org' | 'awarddriver-to-fund' | 'default-function';
 
@@ -26,13 +26,18 @@ type NodeForm = {
 };
 
 const emptyNodeForm: NodeForm = { id: '', code: '', name: '', parentId: '', attributesText: '{}' };
+type SortDirection = 'asc' | 'desc' | null;
+type NodeSortKey = 'name' | 'typeCode' | 'status';
 
 export function AccountingDimensionsPage() {
   const [types, setTypes] = useState<DimensionType[]>([]);
-  const [selectedType, setSelectedType] = useState('LEDGER_ACCOUNT');
+  const [selectedType, setSelectedType] = useState<string>('All');
   const [nodes, setNodes] = useState<DimensionNode[]>([]);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [includeInactive, setIncludeInactive] = useState(false);
+  const [sortKey, setSortKey] = useState<NodeSortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [activeTab, setActiveTab] = useState<'tree' | 'mappings'>('tree');
   const [mappingPath, setMappingPath] = useState<MappingPath>('item-to-ledger');
   const [mappings, setMappings] = useState<Record<string, DimensionMapping[]>>({});
@@ -53,10 +58,15 @@ export function AccountingDimensionsPage() {
   }, []);
 
   useEffect(() => {
-    if (selectedType) {
+    if (types.length > 0) {
       void loadNodes();
     }
-  }, [selectedType, includeInactive]);
+  }, [selectedType, includeInactive, types]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   useEffect(() => {
     if (activeTab === 'mappings') {
@@ -73,14 +83,48 @@ export function AccountingDimensionsPage() {
 
   const mappingRows = useMemo(() => mappings[mappingPath] ?? [], [mappings, mappingPath]);
 
+  const filteredAndSortedNodes = useMemo(() => {
+    const normalized = debouncedQuery.trim().toLowerCase();
+    const filtered = nodes.filter((node) => {
+      const matchesType = selectedType === 'All' || node.typeCode === selectedType;
+      if (!matchesType) {
+        return false;
+      }
+
+      if (!normalized) {
+        return true;
+      }
+
+      return [node.name, node.typeCode, node.status]
+        .filter(Boolean)
+        .some((value) => value.toLowerCase().includes(normalized));
+    });
+
+    if (!sortKey || !sortDirection) {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      const left = a[sortKey];
+      const right = b[sortKey];
+      return sortDirection === 'asc'
+        ? left.localeCompare(right)
+        : right.localeCompare(left);
+    });
+  }, [nodes, selectedType, debouncedQuery, sortKey, sortDirection]);
+
+  const rowAnimationSeed = `${selectedType}-${debouncedQuery}-${sortKey ?? 'none'}-${sortDirection ?? 'none'}`;
+  const selectedNodeType = useMemo(
+    () => (nodeForm.id ? nodes.find((node) => node.id === nodeForm.id)?.typeCode : undefined),
+    [nodeForm.id, nodes],
+  );
+  const editTypeCode = selectedType === 'All' ? selectedNodeType : selectedType;
+
   async function loadTypes() {
     try {
       setError(null);
       const data = await fetchDimensionTypes();
       setTypes(data);
-      if (data.length > 0 && !data.some((type) => type.code === selectedType)) {
-        setSelectedType(data[0].code);
-      }
     } catch (e) {
       setError(getErrorDetails(e));
     }
@@ -89,14 +133,45 @@ export function AccountingDimensionsPage() {
   async function loadNodes() {
     try {
       setError(null);
-      const data = query.trim()
-        ? await searchDimensionNodes(selectedType, query, includeInactive)
-        : await fetchDimensionTree(selectedType, includeInactive);
-      setNodes(data);
+      if (selectedType === 'All') {
+        const allNodes = await Promise.all(types.map((type) => fetchDimensionTree(type.code, includeInactive)));
+        setNodes(allNodes.flat());
+      } else {
+        const data = await fetchDimensionTree(selectedType, includeInactive);
+        setNodes(data);
+      }
     } catch (e) {
       setError(getErrorDetails(e));
     }
   }
+
+  const cycleSort = (column: NodeSortKey) => {
+    if (sortKey !== column) {
+      setSortKey(column);
+      setSortDirection('asc');
+      return;
+    }
+
+    if (sortDirection === 'asc') {
+      setSortDirection('desc');
+      return;
+    }
+
+    if (sortDirection === 'desc') {
+      setSortDirection(null);
+      setSortKey(null);
+      return;
+    }
+
+    setSortDirection('asc');
+  };
+
+  const sortClass = (column: NodeSortKey, direction: Exclude<SortDirection, null>) => {
+    if (sortKey === column && sortDirection === direction) {
+      return 'sort-chevron active';
+    }
+    return 'sort-chevron';
+  };
 
   async function loadMappings() {
     try {
@@ -135,10 +210,14 @@ export function AccountingDimensionsPage() {
         attributes,
       };
 
+      if (!editTypeCode) {
+        return;
+      }
+
       if (nodeForm.id) {
-        await updateDimensionNode(selectedType, nodeForm.id, payload);
+        await updateDimensionNode(editTypeCode, nodeForm.id, payload);
       } else {
-        await createDimensionNode(selectedType, payload);
+        await createDimensionNode(editTypeCode, payload);
       }
 
       setNodeForm(emptyNodeForm);
@@ -166,7 +245,7 @@ export function AccountingDimensionsPage() {
 
     try {
       setError(null);
-      await reorderDimensionNodes(selectedType, node.parentId, reordered.map((value) => value.id));
+      await reorderDimensionNodes(node.typeCode, node.parentId, reordered.map((value) => value.id));
       await loadNodes();
     } catch (e) {
       setError(getErrorDetails(e));
@@ -258,13 +337,16 @@ export function AccountingDimensionsPage() {
 
       {activeTab === 'tree' && (
         <div className="card">
-          <div className="table-tools">
-            <select value={selectedType} onChange={(e) => setSelectedType(e.target.value)}>
-              {types.map((t) => (
-                <option key={t.code} value={t.code}>{t.name}</option>
+          <div className="filters-row">
+            <input className="search" value={query} placeholder="Search name, type, or status" onChange={(e) => setQuery(e.target.value)} />
+            <div className="segmented-control" role="tablist" aria-label="Filter dimension type">
+              <button className={selectedType === 'All' ? 'segment active' : 'segment'} onClick={() => setSelectedType('All')}>All</button>
+              {types.map((type) => (
+                <button key={type.code} className={selectedType === type.code ? 'segment active' : 'segment'} onClick={() => setSelectedType(type.code)}>
+                  {type.name}
+                </button>
               ))}
-            </select>
-            <input className="search" value={query} placeholder="Search" onChange={(e) => setQuery(e.target.value)} />
+            </div>
             <label><input type="checkbox" checked={includeInactive} onChange={(e) => setIncludeInactive(e.target.checked)} /> Show inactive</label>
             <button className="btn btn-secondary" onClick={() => void loadNodes()}>Refresh</button>
           </div>
@@ -272,14 +354,15 @@ export function AccountingDimensionsPage() {
           <div className="detail-grid">
             <div>
               <h3>Hierarchy View</h3>
-              <table className="clickable-rows">
-                <thead><tr><th>Code</th><th>Name</th><th>Status</th><th>Parent</th><th>Hierarchy</th></tr></thead>
+              <table className="clickable-rows align-table">
+                <thead><tr><th>Code</th><th><button className="sort-header" onClick={() => cycleSort('name')}>Name<span className="sort-icons"><span className={sortClass('name', 'asc')}>▲</span><span className={sortClass('name', 'desc')}>▼</span></span></button></th><th><button className="sort-header" onClick={() => cycleSort('typeCode')}>Type<span className="sort-icons"><span className={sortClass('typeCode', 'asc')}>▲</span><span className={sortClass('typeCode', 'desc')}>▼</span></span></button></th><th><button className="sort-header" onClick={() => cycleSort('status')}>Status<span className="sort-icons"><span className={sortClass('status', 'asc')}>▲</span><span className={sortClass('status', 'desc')}>▼</span></span></button></th><th>Parent</th><th>Hierarchy</th></tr></thead>
                 <tbody>
-                  {nodes.map((node) => (
-                    <tr key={node.id} onClick={() => selectNode(node)}>
+                  {filteredAndSortedNodes.map((node, index) => (
+                    <tr key={`${node.id}-${rowAnimationSeed}`} className="animated-row" style={{ animationDelay: `${Math.min(index * 22, 180)}ms` }} onClick={() => selectNode(node)}>
                       <td>{node.code}</td>
                       <td>{'· '.repeat(node.depth)}{node.name}</td>
-                      <td>{node.status}</td>
+                      <td>{node.typeCode}</td>
+                      <td><StatusPill status={node.status} /></td>
                       <td>{node.parentId ? nodeNameById.get(node.parentId) ?? node.parentId : 'Top Level'}</td>
                       <td>
                         <button className="btn btn-secondary" onClick={(event) => { event.stopPropagation(); void moveWithinHierarchy(node, 'up'); }}>↑</button>{' '}
@@ -303,20 +386,23 @@ export function AccountingDimensionsPage() {
                 </label>
               </div>
               <div className="actions-row">
-                <button className="btn btn-primary" onClick={() => void saveNode()} disabled={isSavingNode}>{nodeForm.id ? 'Update Dimension' : 'Add Dimension'}</button>
+                <button className="btn btn-primary" onClick={() => void saveNode()} disabled={isSavingNode || !editTypeCode}>{nodeForm.id ? 'Update Dimension' : 'Add Dimension'}</button>
                 <button className="btn btn-secondary" onClick={() => setNodeForm(emptyNodeForm)}>Clear</button>
                 {!!nodeForm.id && (
                   <>
-                    <button className="btn btn-secondary" onClick={() => void moveDimensionNode(selectedType, nodeForm.id, undefined).then(loadNodes)}>Move to Top Hierarchy</button>
+                    <button className="btn btn-secondary" onClick={() => editTypeCode && void moveDimensionNode(editTypeCode, nodeForm.id, undefined).then(loadNodes)}>Move to Top Hierarchy</button>
                     <button className="btn btn-secondary" onClick={() => {
                       const current = nodes.find((n) => n.id === nodeForm.id);
                       if (current) {
-                        void setDimensionNodeStatus(selectedType, nodeForm.id, current.status === 'Active' ? 'Inactive' : 'Active').then(loadNodes);
+                        void setDimensionNodeStatus(current.typeCode, nodeForm.id, current.status === 'Active' ? 'Inactive' : 'Active').then(loadNodes);
                       }
                     }}>Toggle Active</button>
                   </>
                 )}
               </div>
+              {selectedType === 'All' && !nodeForm.id && (
+                <p className="subtle">Select a specific type segment to add a new dimension node.</p>
+              )}
             </div>
           </div>
         </div>

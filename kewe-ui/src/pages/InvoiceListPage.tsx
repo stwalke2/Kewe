@@ -6,19 +6,29 @@ import { CreateDraftModal } from '../components/CreateDraftModal';
 import { StatusPill } from '../components/StatusPill';
 
 const statuses: Array<InvoiceStatus | 'All'> = ['All', 'Draft', 'Submitted', 'Approved', 'Posted'];
+type SortDirection = 'asc' | 'desc' | null;
+type SortKey = 'invoiceNumber' | 'supplierId' | 'invoiceDate' | 'invoiceAmount' | 'status';
 
 export function InvoiceListPage() {
   const [invoices, setInvoices] = useState<SupplierInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<ReturnType<typeof getErrorDetails> | null>(null);
   const [query, setQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
+  const [sortKey, setSortKey] = useState<SortKey | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     void loadInvoices();
   }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 250);
+    return () => window.clearTimeout(timer);
+  }, [query]);
 
   const loadInvoices = async () => {
     setLoading(true);
@@ -33,10 +43,9 @@ export function InvoiceListPage() {
     }
   };
 
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-
-    return invoices.filter((invoice) => {
+  const filteredAndSorted = useMemo(() => {
+    const normalized = debouncedQuery.trim().toLowerCase();
+    const filtered = invoices.filter((invoice) => {
       const matchesStatus = statusFilter === 'All' || invoice.status === statusFilter;
       if (!normalized) {
         return matchesStatus;
@@ -48,7 +57,57 @@ export function InvoiceListPage() {
 
       return matchesStatus && matchesQuery;
     });
-  }, [invoices, query, statusFilter]);
+
+    if (!sortKey || !sortDirection) {
+      return filtered;
+    }
+
+    return [...filtered].sort((a, b) => {
+      const left = a[sortKey];
+      const right = b[sortKey];
+
+      if (left == null) return 1;
+      if (right == null) return -1;
+
+      if (typeof left === 'number' && typeof right === 'number') {
+        return sortDirection === 'asc' ? left - right : right - left;
+      }
+
+      return sortDirection === 'asc'
+        ? String(left).localeCompare(String(right))
+        : String(right).localeCompare(String(left));
+    });
+  }, [invoices, debouncedQuery, statusFilter, sortKey, sortDirection]);
+
+  const rowAnimationSeed = `${debouncedQuery}-${statusFilter}-${sortKey ?? 'none'}-${sortDirection ?? 'none'}`;
+
+  const cycleSort = (column: SortKey) => {
+    if (sortKey !== column) {
+      setSortKey(column);
+      setSortDirection('asc');
+      return;
+    }
+
+    if (sortDirection === 'asc') {
+      setSortDirection('desc');
+      return;
+    }
+
+    if (sortDirection === 'desc') {
+      setSortDirection(null);
+      setSortKey(null);
+      return;
+    }
+
+    setSortDirection('asc');
+  };
+
+  const sortClass = (column: SortKey, direction: Exclude<SortDirection, null>) => {
+    if (sortKey === column && sortDirection === direction) {
+      return 'sort-chevron active';
+    }
+    return 'sort-chevron';
+  };
 
   const handleCreate = async (payload: Parameters<typeof createDraft>[0]) => {
     const created = await createDraft(payload);
@@ -111,17 +170,42 @@ export function InvoiceListPage() {
           <table className="clickable-rows align-table">
             <thead>
               <tr>
-                <th>Invoice #</th>
-                <th>Supplier</th>
-                <th>Invoice Date</th>
-                <th className="amount">Amount</th>
-                <th>Status</th>
+                <th>
+                  <button className="sort-header" onClick={() => cycleSort('invoiceNumber')}>
+                    Invoice #<span className="sort-icons"><span className={sortClass('invoiceNumber', 'asc')}>▲</span><span className={sortClass('invoiceNumber', 'desc')}>▼</span></span>
+                  </button>
+                </th>
+                <th>
+                  <button className="sort-header" onClick={() => cycleSort('supplierId')}>
+                    Supplier<span className="sort-icons"><span className={sortClass('supplierId', 'asc')}>▲</span><span className={sortClass('supplierId', 'desc')}>▼</span></span>
+                  </button>
+                </th>
+                <th>
+                  <button className="sort-header" onClick={() => cycleSort('invoiceDate')}>
+                    Invoice Date<span className="sort-icons"><span className={sortClass('invoiceDate', 'asc')}>▲</span><span className={sortClass('invoiceDate', 'desc')}>▼</span></span>
+                  </button>
+                </th>
+                <th className="amount">
+                  <button className="sort-header amount" onClick={() => cycleSort('invoiceAmount')}>
+                    Amount<span className="sort-icons"><span className={sortClass('invoiceAmount', 'asc')}>▲</span><span className={sortClass('invoiceAmount', 'desc')}>▼</span></span>
+                  </button>
+                </th>
+                <th>
+                  <button className="sort-header" onClick={() => cycleSort('status')}>
+                    Status<span className="sort-icons"><span className={sortClass('status', 'asc')}>▲</span><span className={sortClass('status', 'desc')}>▼</span></span>
+                  </button>
+                </th>
                 <th className="actions-col" />
               </tr>
             </thead>
             <tbody>
-              {filtered.map((invoice) => (
-                <tr key={invoice.id} onClick={() => navigate(`/supplier-invoices/${invoice.id}`)}>
+              {filteredAndSorted.map((invoice, index) => (
+                <tr
+                  key={`${invoice.id}-${rowAnimationSeed}`}
+                  className="animated-row"
+                  style={{ animationDelay: `${Math.min(index * 24, 200)}ms` }}
+                  onClick={() => navigate(`/supplier-invoices/${invoice.id}`)}
+                >
                   <td className="strong">{invoice.invoiceNumber}</td>
                   <td>{invoice.supplierId}</td>
                   <td>{invoice.invoiceDate ?? '—'}</td>
@@ -132,7 +216,7 @@ export function InvoiceListPage() {
                   <td className="actions-col">⋯</td>
                 </tr>
               ))}
-              {filtered.length === 0 && (
+              {filteredAndSorted.length === 0 && (
                 <tr>
                   <td colSpan={6}>
                     <div className="empty-state">

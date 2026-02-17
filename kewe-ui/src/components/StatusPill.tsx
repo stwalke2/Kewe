@@ -1,9 +1,8 @@
-import type { InvoiceStatus } from '../api/types';
-
 interface Props {
-  status: InvoiceStatus;
+  status: string;
 }
 
 export function StatusPill({ status }: Props) {
-  return <span className={`status-pill status-${status.toLowerCase()}`}>{status}</span>;
+  const normalized = status.toLowerCase();
+  return <span className={`status-pill status-${normalized}`}>{status}</span>;
 }
