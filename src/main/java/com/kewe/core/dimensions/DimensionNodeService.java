@@ -60,12 +60,24 @@ public class DimensionNodeService {
     }
 
     public DimensionNode updateNode(String typeCode, String nodeId, DimensionNodeRequest request) {
+        DimensionType type = dimensionTypeService.getByCode(typeCode);
         DimensionNode node = getNode(typeCode, nodeId);
         String code = normalizeCode(request.getCode());
         if (!Objects.equals(code, node.getCode())
                 && nodeRepository.existsByTypeCodeAndCode(node.getTypeCode(), code)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Node code already exists in this dimension type");
         }
+
+        DimensionNode newParent = resolveParent(type.getCode(), request.getParentId());
+        if (newParent != null && isDescendant(node, newParent)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Move would create cycle");
+        }
+
+        String oldPath = node.getPath();
+        int oldDepth = node.getDepth();
+        int newDepth = newParent == null ? 0 : newParent.getDepth() + 1;
+        validateDepth(newDepth, type);
+
         node.setCode(code);
         node.setName(request.getName().trim());
         node.setDescription(request.getDescription());
@@ -73,8 +85,28 @@ public class DimensionNodeService {
         if (request.getSortOrder() != null) {
             node.setSortOrder(request.getSortOrder());
         }
+        node.setParentId(newParent == null ? null : newParent.getId());
+        node.setDepth(newDepth);
+        node.setPath(buildPath(node.getTypeCode(), node.getParentId(), node.getId()));
         touchUpdate(node);
-        return nodeRepository.save(node);
+        nodeRepository.save(node);
+
+        if (!Objects.equals(oldPath, node.getPath()) || oldDepth != newDepth) {
+            int depthDelta = newDepth - oldDepth;
+            List<DimensionNode> descendants = nodeRepository.findByTypeCodeAndPathStartingWith(node.getTypeCode(), oldPath + "/");
+            for (DimensionNode descendant : descendants) {
+                String suffix = descendant.getPath().substring(oldPath.length());
+                descendant.setPath(node.getPath() + suffix);
+                descendant.setDepth(descendant.getDepth() + depthDelta);
+                validateDepth(descendant.getDepth(), type);
+                touchUpdate(descendant);
+            }
+            if (!descendants.isEmpty()) {
+                nodeRepository.saveAll(descendants);
+            }
+        }
+
+        return node;
     }
 
     public List<DimensionNode> getNodes(String typeCode, boolean includeInactive) {
