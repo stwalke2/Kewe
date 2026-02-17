@@ -8,8 +8,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        // Keep the /api prefix so Spring controllers mapped under /api/* resolve correctly.
       },
     },
   },
 });
-

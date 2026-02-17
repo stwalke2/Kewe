@@ -85,3 +85,10 @@ export interface DimensionMapping {
   targetNodeId: string;
   status: string;
 }
+
+
+export interface ApiErrorDetails {
+  endpoint?: string;
+  status?: number;
+  message: string;
+}
