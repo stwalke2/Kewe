@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useMatch, useNavigate, useParams } from 'react-router-dom';
 import {
   createDimensionNode,
   deleteDimensionNode,
   fetchDimensionTree,
   fetchDimensionTypes,
+  getErrorDetails,
   getErrorMessage,
   setDimensionNodeStatus,
   updateDimensionNode,
 } from '../api';
-import type { DimensionNode, DimensionType } from '../api/types';
+import type { ApiErrorDetails, DimensionNode, DimensionType } from '../api/types';
 import { StatusPill } from '../components/StatusPill';
-import { getDimensionTypeLabel } from '../dimensionTypeLabels';
 
 type DraftNode = {
   typeCode: string;
@@ -37,7 +37,8 @@ function nodeToDraft(node: DimensionNode): DraftNode {
 
 export function AccountingDimensionDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const isCreateMode = id === 'new';
+  const isNewRoute = useMatch('/accounting-dimensions/new');
+  const isCreateMode = id === 'new' || Boolean(isNewRoute);
   const navigate = useNavigate();
 
   const [types, setTypes] = useState<DimensionType[]>([]);
@@ -48,11 +49,13 @@ export function AccountingDimensionDetailPage() {
   const [editMode, setEditMode] = useState(isCreateMode);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorDetails, setErrorDetails] = useState<ApiErrorDetails | null>(null);
   const [message, setMessage] = useState<{ kind: 'success' | 'error'; text: string } | null>(null);
+  const isEditing = isCreateMode || editMode;
 
   useEffect(() => {
     void loadPageData();
-  }, [id]);
+  }, [id, isCreateMode]);
 
   const availableHierarchyNodes = useMemo(() => {
     if (!draft.typeCode) return [];
@@ -74,6 +77,7 @@ export function AccountingDimensionDetailPage() {
     setLoading(true);
     setError(null);
     setMessage(null);
+    setErrorDetails(null);
 
     try {
       const loadedTypes = await fetchDimensionTypes();
@@ -104,11 +108,6 @@ export function AccountingDimensionDetailPage() {
     }
   }
 
-  const hasUnsavedChanges = useMemo(() => {
-    if (isCreateMode) return JSON.stringify(draft) !== JSON.stringify(emptyDraft());
-    return dimension ? JSON.stringify(draft) !== JSON.stringify(nodeToDraft(dimension)) : false;
-  }, [dimension, draft, isCreateMode]);
-
   const handleSave = async () => {
     if (!draft.typeCode || !draft.code.trim() || !draft.name.trim()) {
       setMessage({ kind: 'error', text: 'Dimension Type, Code, and Name are required.' });
@@ -117,6 +116,7 @@ export function AccountingDimensionDetailPage() {
 
     setBusy(true);
     setMessage(null);
+    setErrorDetails(null);
 
     try {
       const payload = {
@@ -141,6 +141,7 @@ export function AccountingDimensionDetailPage() {
       setMessage({ kind: 'success', text: 'Dimension updated.' });
       await loadPageData();
     } catch (e) {
+      setErrorDetails(getErrorDetails(e));
       setMessage({ kind: 'error', text: getErrorMessage(e) });
     } finally {
       setBusy(false);
@@ -149,7 +150,7 @@ export function AccountingDimensionDetailPage() {
 
   const handleCancel = () => {
     if (isCreateMode) {
-      setDraft(emptyDraft());
+      navigate('/accounting-dimensions');
       return;
     }
     if (dimension) setDraft(nodeToDraft(dimension));
@@ -160,6 +161,7 @@ export function AccountingDimensionDetailPage() {
     if (!dimension) return;
     setBusy(true);
     setMessage(null);
+    setErrorDetails(null);
     try {
       const nextStatus = dimension.status === 'Active' ? 'Inactive' : 'Active';
       const updated = await setDimensionNodeStatus(dimension.typeCode, dimension.id, nextStatus);
@@ -167,6 +169,7 @@ export function AccountingDimensionDetailPage() {
       setDraft(nodeToDraft(updated));
       setMessage({ kind: 'success', text: `Dimension set to ${nextStatus}.` });
     } catch (e) {
+      setErrorDetails(getErrorDetails(e));
       setMessage({ kind: 'error', text: getErrorMessage(e) });
     } finally {
       setBusy(false);
@@ -177,10 +180,12 @@ export function AccountingDimensionDetailPage() {
     if (!dimension) return;
     setBusy(true);
     setMessage(null);
+    setErrorDetails(null);
     try {
       await deleteDimensionNode(dimension.typeCode, dimension.id);
       navigate('/accounting-dimensions');
     } catch (e) {
+      setErrorDetails(getErrorDetails(e));
       setMessage({ kind: 'error', text: getErrorMessage(e) });
     } finally {
       setBusy(false);
@@ -204,41 +209,46 @@ export function AccountingDimensionDetailPage() {
           <div className="form-grid">
             <label>
               Dimension Type
-              <select value={draft.typeCode} disabled={busy || (!isCreateMode && !editMode) || !isCreateMode} onChange={(event) => setDraft({ ...draft, typeCode: event.target.value, parentId: undefined })}>
+              <select value={draft.typeCode} disabled={busy || !isCreateMode} onChange={(event) => setDraft({ ...draft, typeCode: event.target.value, parentId: undefined })}>
                 <option value="">Select type</option>
                 {types.map((type) => <option key={type.code} value={type.code}>{type.name}</option>)}
               </select>
             </label>
             {!isCreateMode && <label>ID<input value={dimension?.id ?? ''} disabled /></label>}
             {!isCreateMode && <label>Status<div className="status-inline"><StatusPill status={dimension?.status ?? 'Draft'} /></div></label>}
-            <label>Code<input value={draft.code} disabled={busy || (!isCreateMode && !editMode)} onChange={(event) => setDraft({ ...draft, code: event.target.value })} /></label>
-            <label>Name<input value={draft.name} disabled={busy || (!isCreateMode && !editMode)} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
-            <label>Description<input value={draft.description ?? ''} disabled={busy || (!isCreateMode && !editMode)} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
+            <label>Code<input value={draft.code} disabled={busy || !isEditing} onChange={(event) => setDraft({ ...draft, code: event.target.value })} /></label>
+            <label>Name<input value={draft.name} disabled={busy || !isEditing} onChange={(event) => setDraft({ ...draft, name: event.target.value })} /></label>
+            <label>Description<input value={draft.description ?? ''} disabled={busy || !isEditing} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
             <label>
               Hierarchy
-              <select value={draft.parentId ?? ''} disabled={busy || (!isCreateMode && !editMode) || !draft.typeCode} onChange={(event) => setDraft({ ...draft, parentId: event.target.value || undefined })}>
+              <select value={draft.parentId ?? ''} disabled={busy || !isEditing || !draft.typeCode} onChange={(event) => setDraft({ ...draft, parentId: event.target.value || undefined })}>
                 <option value="">Top level</option>
                 {availableHierarchyNodes.map((node) => <option key={node.id} value={node.id}>{node.code} {node.name}</option>)}
               </select>
+              {!draft.typeCode && <small>Select a type to choose a hierarchy parent</small>}
             </label>
-            {!isCreateMode && <label>Dimension Type Label<input value={getDimensionTypeLabel(draft.typeCode, types)} disabled /></label>}
             {!isCreateMode && <label>Current Parent<input value={draft.parentId ? nodeLabelById.get(draft.parentId) ?? '—' : 'Top level'} disabled /></label>}
           </div>
 
           <div className="actions-row">
-            {isCreateMode && <button className="btn btn-primary" disabled={busy} onClick={() => void handleSave()}>{busy ? 'Creating…' : 'Create'}</button>}
-            {!isCreateMode && !editMode && <button className="btn btn-secondary" disabled={busy} onClick={() => setEditMode(true)}>Edit</button>}
-            {!isCreateMode && editMode && <>
-              <button className="btn btn-primary" disabled={busy} onClick={() => void handleSave()}>{busy ? 'Saving…' : 'Save'}</button>
-              <button className="btn btn-secondary" disabled={busy || !hasUnsavedChanges} onClick={handleCancel}>Cancel</button>
+            {isCreateMode && <>
+              <button className="btn btn-primary" disabled={busy} onClick={() => void handleSave()}>{busy ? 'Creating…' : 'Create'}</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={handleCancel}>Cancel</button>
             </>}
-            {!isCreateMode && <button className="btn btn-secondary" onClick={() => void handleToggleStatus()} disabled={busy}>{dimension?.status === 'Active' ? 'Deactivate' : 'Activate'}</button>}
-            {!isCreateMode && (
+            {!isCreateMode && !editMode && <>
+              <button className="btn btn-primary" disabled={busy} onClick={() => setEditMode(true)}>Edit</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={() => navigate('/accounting-dimensions')}>Back</button>
+              <button className="btn btn-secondary" onClick={() => void handleToggleStatus()} disabled={busy}>{dimension?.status === 'Active' ? 'Deactivate' : 'Activate'}</button>
               <button className="btn btn-danger" onClick={() => void handleDelete()} disabled={busy || isUsedInHierarchy} title={isUsedInHierarchy ? 'Cannot delete because this dimension is used as a hierarchy parent.' : 'Delete this dimension'}>
                 Delete
               </button>
-            )}
+            </>}
+            {!isCreateMode && editMode && <>
+              <button className="btn btn-primary" disabled={busy} onClick={() => void handleSave()}>{busy ? 'Saving…' : 'Save'}</button>
+              <button className="btn btn-secondary" disabled={busy} onClick={handleCancel}>Cancel</button>
+            </>}
           </div>
+          {errorDetails && <div className="message error"><strong>Request error</strong><div>Endpoint: {errorDetails.endpoint ?? '—'}</div><div>Status: {errorDetails.status ?? '—'}</div><div>Message: {errorDetails.message}</div></div>}
           {message && <p className={`message ${message.kind}`}>{message.text}</p>}
         </div>
       )}
