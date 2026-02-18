@@ -1,3 +1,10 @@
+@font-face {
+  font-family: "Aeonik";
+  src: local("Aeonik"), local("Aeonik Regular");
+  font-weight: 400;
+  font-style: normal;
+}
+
 :root {
   --bg-page: #eaedf3;
   --surface: #ffffff;
@@ -10,13 +17,18 @@
   --ring: rgba(17, 24, 39, 0.22);
   --shadow-soft: 0 14px 35px rgba(15, 23, 42, 0.08);
   --radius-lg: 14px;
+  --font-family: "Aeonik", "Inter", "Avenir Next", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 
   color: var(--text);
   background: var(--bg-page);
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; background: linear-gradient(180deg, #dfe3ea 0%, #edf0f5 40%, #e6ebf3 100%); }
+body {
+  margin: 0;
+  font-family: var(--font-family);
+  background: linear-gradient(180deg, #dfe3ea 0%, #edf0f5 40%, #e6ebf3 100%);
+}
 a { color: inherit; }
 
 .app-shell {
@@ -39,18 +51,39 @@ a { color: inherit; }
   flex-direction: column;
 }
 .brand-block { margin-bottom: 1.75rem; }
-.brand { font-size: 1.32rem; font-weight: 700; margin-bottom: 0.2rem; }
+.brand { font-size: 1.34rem; font-weight: 700; margin-bottom: 0.2rem; letter-spacing: -0.01em; }
 .nav-group { margin-bottom: 1.35rem; }
 .nav-group-title { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.55rem; }
 
 .nav-link {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.58rem;
   color: #344054;
   text-decoration: none;
   padding: 0.64rem 0.84rem;
   border-radius: 11px;
   margin-bottom: 0.35rem;
   font-weight: 500;
+}
+
+.nav-icon {
+  width: 1.05rem;
+  height: 1.05rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #667085;
+  flex-shrink: 0;
+}
+
+.nav-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+.nav-link.active .nav-icon {
+  color: #7f56d9;
 }
 .nav-link:hover, .nav-link.active { background: #ffffff; color: #101828; box-shadow: 0 1px 2px rgba(16,24,40,0.06); }
 .nav-link-muted { color: #98a2b3; }
@@ -224,12 +257,12 @@ th:hover { background: #f3f6fb; color: #475467; }
   transition: transform 150ms ease, filter 150ms ease;
 }
 .status-pill:hover { transform: scale(1.02); filter: brightness(0.98); }
-.status-draft { background: #f2f4f7; color: #344054; border-color: #e4e7ec; }
-.status-submitted { background: #eff8ff; color: #175cd3; border-color: #d1e9ff; }
-.status-approved { background: #ecfdf3; color: #067647; border-color: #abefc6; }
-.status-posted { background: #eaecf0; color: #1d2939; border-color: #d0d5dd; }
-.status-inactive { background: #f9fafb; color: #98a2b3; border-color: #eaecf0; }
-.status-active { background: #ecfdf3; color: #067647; border-color: #abefc6; }
+.status-success { background: #ecfdf3; color: #067647; border-color: #abefc6; }
+.status-danger { background: #fef3f2; color: #b42318; border-color: #fecdca; }
+.status-warning { background: #fffaeb; color: #b54708; border-color: #fedf89; }
+.status-info { background: #eff8ff; color: #175cd3; border-color: #d1e9ff; }
+.status-neutral { background: #f2f4f7; color: #344054; border-color: #e4e7ec; }
+.status-custom { background: #f4f3ff; color: #5925dc; border-color: #d9d6fe; }
 
 .detail-grid { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 0.95fr); gap: 1rem; }
 .detail-grid > * { animation: detail-fade 200ms ease both; }
