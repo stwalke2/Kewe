@@ -18,6 +18,7 @@ export function InvoiceListPage() {
   const [statusFilter, setStatusFilter] = useState<InvoiceStatus | 'All'>('All');
   const [sortKey, setSortKey] = useState<SortKey | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>(null);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const navigate = useNavigate();
 
@@ -80,6 +81,24 @@ export function InvoiceListPage() {
   }, [invoices, debouncedQuery, statusFilter, sortKey, sortDirection]);
 
   const rowAnimationSeed = `${debouncedQuery}-${statusFilter}-${sortKey ?? 'none'}-${sortDirection ?? 'none'}`;
+  const visibleInvoiceIds = filteredAndSorted.map((invoice) => invoice.id);
+  const allVisibleSelected = visibleInvoiceIds.length > 0 && visibleInvoiceIds.every((id) => selectedInvoiceIds.includes(id));
+
+  const toggleSelection = (invoiceId: string) => {
+    setSelectedInvoiceIds((existing) =>
+      existing.includes(invoiceId) ? existing.filter((id) => id !== invoiceId) : [...existing, invoiceId],
+    );
+  };
+
+  const toggleSelectAllVisible = () => {
+    setSelectedInvoiceIds((existing) => {
+      if (allVisibleSelected) {
+        return existing.filter((id) => !visibleInvoiceIds.includes(id));
+      }
+
+      return Array.from(new Set([...existing, ...visibleInvoiceIds]));
+    });
+  };
 
   const cycleSort = (column: SortKey) => {
     if (sortKey !== column) {
@@ -170,6 +189,15 @@ export function InvoiceListPage() {
           <table className="clickable-rows align-table">
             <thead>
               <tr>
+                <th className="checkbox-col">
+                  <input
+                    type="checkbox"
+                    className="row-check"
+                    aria-label="Select all visible invoices"
+                    checked={allVisibleSelected}
+                    onChange={toggleSelectAllVisible}
+                  />
+                </th>
                 <th>
                   <button className="sort-header" onClick={() => cycleSort('invoiceNumber')}>
                     Invoice #<span className="sort-icons"><span className={sortClass('invoiceNumber', 'asc')}>▲</span><span className={sortClass('invoiceNumber', 'desc')}>▼</span></span>
@@ -206,6 +234,15 @@ export function InvoiceListPage() {
                   style={{ animationDelay: `${Math.min(index * 24, 200)}ms` }}
                   onClick={() => navigate(`/supplier-invoices/${invoice.id}`)}
                 >
+                  <td className="checkbox-col" onClick={(event) => event.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      className="row-check"
+                      checked={selectedInvoiceIds.includes(invoice.id)}
+                      aria-label={`Select invoice ${invoice.invoiceNumber}`}
+                      onChange={() => toggleSelection(invoice.id)}
+                    />
+                  </td>
                   <td className="strong">{invoice.invoiceNumber}</td>
                   <td>{invoice.supplierId}</td>
                   <td>{invoice.invoiceDate ?? '—'}</td>
@@ -218,7 +255,7 @@ export function InvoiceListPage() {
               ))}
               {filteredAndSorted.length === 0 && (
                 <tr>
-                  <td colSpan={6}>
+                  <td colSpan={7}>
                     <div className="empty-state">
                       <p>No invoices matched your filters.</p>
                       <button className="btn btn-primary" onClick={() => setShowModal(true)}>
