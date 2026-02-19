@@ -129,6 +129,10 @@ main {
 
 .filters-row, .table-tools { display: flex; gap: 0.75rem; align-items: center; margin-bottom: 0.85rem; flex-wrap: wrap; }
 .search { flex: 1; min-width: 220px; }
+.accounting-search {
+  flex: 0 1 560px;
+  max-width: 560px;
+}
 
 input, select, textarea {
   width: 100%;
@@ -173,6 +177,50 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 .segment { border: 0; background: transparent; color: #475467; padding: 0.42rem 0.72rem; border-radius: 8px; transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 160ms ease; }
 .segment.active { background: #fff; color: #101828; box-shadow: 0 1px 3px rgba(16,24,40,0.14); }
 
+.type-tabs-scroll {
+  overflow-x: auto;
+  padding-bottom: 0.2rem;
+  margin-bottom: 0.8rem;
+}
+.type-tabs-scroll .segmented-control {
+  min-width: max-content;
+}
+
+.filter-panel {
+  display: flex;
+  align-items: end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 0.85rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #f9fbff;
+  margin-bottom: 0.85rem;
+}
+.filter-panel label {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 180px;
+  font-weight: 500;
+}
+.inline-check {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 0.45rem;
+  min-width: auto !important;
+}
+.inline-check input {
+  width: auto;
+}
+
+.table-scroll-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.dimensions-table {
+  min-width: 880px;
+}
+
 table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #edf0f5; border-radius: 12px; overflow: hidden; }
 th, td { text-align: left; padding: 0.95rem 0.55rem; border-top: 1px solid #edf0f5; vertical-align: middle; }
 th {
@@ -196,7 +244,9 @@ th:hover { background: #f3f6fb; color: #475467; }
   padding: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-start;
   gap: 0.32rem;
+  width: 100%;
   color: inherit;
   font-size: inherit;
   font-weight: inherit;
@@ -327,6 +377,8 @@ th:hover { background: #f3f6fb; color: #475467; }
   main { width: 100%; padding: 1rem; }
   .detail-grid, .form-grid { grid-template-columns: 1fr; }
   .filters-row, .table-tools { flex-direction: column; align-items: stretch; }
+  .accounting-search { max-width: none; }
+  .filter-panel { align-items: stretch; }
   .page-header-row { flex-direction: column; align-items: flex-start; }
   select { max-width: none; }
 }
