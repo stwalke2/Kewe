@@ -1,5 +1,24 @@
-import type { PropsWithChildren } from 'react';
+import { useState, type PropsWithChildren } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
+
+function KiwiLogo() {
+  return (
+    <svg viewBox="0 0 40 40" aria-hidden="true" focusable="false">
+      <circle cx="20" cy="20" r="19" fill="url(#kiwe-logo-bg)" />
+      <path d="M11.2 22.4c.4-4.3 3.7-7.8 7.9-8.6 3.2-.6 6.6.6 8.7 3.1-.4 4.4-3.8 8.1-8.1 8.8-3.2.5-6.5-.7-8.5-3.3Z" fill="#fef7d2" />
+      <path d="M13.4 22.6c.4-2.7 2.6-4.9 5.2-5.4 2.2-.4 4.6.4 6 2-.4 2.8-2.6 5.2-5.4 5.6-2.2.3-4.5-.5-5.8-2.2Z" fill="#4d3a2c" />
+      <circle cx="21.4" cy="18.6" r="1" fill="#fff" />
+      <path d="M24.6 19.5c2.5.1 4.5 2.2 4.5 4.7v.2h-5.7" stroke="#f2b167" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <circle cx="9.8" cy="24.2" r="1" fill="#4d3a2c" />
+      <defs>
+        <linearGradient id="kiwe-logo-bg" x1="7" y1="6" x2="34" y2="34" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#7251d3" />
+          <stop offset="1" stopColor="#4a2aa8" />
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+}
 
 function InvoicesIcon() {
   return (
@@ -42,6 +61,7 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
 };
 
 export function Layout({ children }: PropsWithChildren) {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
   const isInvoiceDetail = location.pathname.startsWith('/supplier-invoices/');
   const isDimensionDetail = location.pathname.startsWith('/accounting-dimensions/');
@@ -52,11 +72,27 @@ export function Layout({ children }: PropsWithChildren) {
     : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
       <aside className="sidebar">
+        <button
+          type="button"
+          className="sidebar-toggle"
+          onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-pressed={sidebarCollapsed}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+            <path d="m11.6 4.8-4.2 5.2 4.2 5.2" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <div className="brand-block">
-          <div className="brand">Kewe</div>
-          <p className="subtle">Finance Workspace</p>
+          <div className="brand-row">
+            <span className="brand-logo"><KiwiLogo /></span>
+            <div>
+              <div className="brand">Kewe</div>
+              <p className="subtle">Finance Workspace</p>
+            </div>
+          </div>
         </div>
 
         <div className="nav-group">
@@ -67,21 +103,21 @@ export function Layout({ children }: PropsWithChildren) {
               className={({ isActive }) => (isActive || isInvoiceDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><InvoicesIcon /></span>
-              Supplier Invoices
+              <span className="nav-label">Supplier Invoices</span>
             </NavLink>
             <NavLink
               to="/accounting-dimensions"
               className={({ isActive }) => (isActive || isDimensionDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><DimensionsIcon /></span>
-              Accounting Dimensions
+              <span className="nav-label">Accounting Dimensions</span>
             </NavLink>
           </nav>
         </div>
 
         <div className="nav-group">
           <p className="nav-group-title">Other</p>
-          <span className="nav-link nav-link-muted"><span className="nav-icon"><SettingsIcon /></span>Settings (soon)</span>
+          <span className="nav-link nav-link-muted"><span className="nav-icon"><SettingsIcon /></span><span className="nav-label">Settings (soon)</span></span>
         </div>
       </aside>
 

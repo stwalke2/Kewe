@@ -41,6 +41,11 @@ a { color: inherit; }
   overflow: hidden;
   background: #f6f8fb;
   box-shadow: 0 30px 60px rgba(15, 23, 42, 0.12);
+  transition: grid-template-columns 280ms cubic-bezier(.22,.61,.36,1);
+}
+
+.app-shell.sidebar-collapsed {
+  grid-template-columns: 88px minmax(0, 1fr);
 }
 
 .sidebar {
@@ -49,8 +54,45 @@ a { color: inherit; }
   padding: 1.5rem 1.1rem;
   display: flex;
   flex-direction: column;
+  position: relative;
 }
-.brand-block { margin-bottom: 1.75rem; }
+.sidebar-toggle {
+  position: absolute;
+  top: 1rem;
+  right: -0.85rem;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #475467;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(16, 24, 40, 0.08);
+  z-index: 2;
+}
+.sidebar-toggle svg {
+  width: 0.8rem;
+  height: 0.8rem;
+  transition: transform 240ms ease;
+}
+.brand-block { margin-bottom: 1.75rem; overflow: hidden; }
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+.brand-logo {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 999px;
+  flex-shrink: 0;
+  transition: transform 220ms ease;
+}
+.brand-logo svg { width: 100%; height: 100%; display: block; }
 .brand { font-size: 1.34rem; font-weight: 700; margin-bottom: 0.2rem; letter-spacing: -0.01em; }
 .nav-group { margin-bottom: 1.35rem; }
 .nav-group-title { font-size: 0.73rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 0.55rem; }
@@ -65,16 +107,25 @@ a { color: inherit; }
   border-radius: 11px;
   margin-bottom: 0.35rem;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .nav-icon {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 1.12rem;
+  height: 1.12rem;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   color: #667085;
   flex-shrink: 0;
+  transition: transform 220ms ease;
+}
+
+.nav-label,
+.brand-row > div,
+.nav-group-title {
+  transition: opacity 180ms ease, transform 220ms ease;
 }
 
 .nav-icon svg {
@@ -87,6 +138,46 @@ a { color: inherit; }
 }
 .nav-link:hover, .nav-link.active { background: #ffffff; color: #101828; box-shadow: 0 1px 2px rgba(16,24,40,0.06); }
 .nav-link-muted { color: #98a2b3; }
+
+.app-shell.sidebar-collapsed .sidebar-toggle svg {
+  transform: rotate(180deg);
+}
+
+.app-shell.sidebar-collapsed .sidebar {
+  padding-left: 0.8rem;
+  padding-right: 0.8rem;
+}
+
+.app-shell.sidebar-collapsed .brand-block {
+  margin-top: 0.2rem;
+}
+
+.app-shell.sidebar-collapsed .brand-row {
+  justify-content: center;
+}
+
+.app-shell.sidebar-collapsed .brand-logo {
+  transform: scale(1.13);
+}
+
+.app-shell.sidebar-collapsed .brand-row > div,
+.app-shell.sidebar-collapsed .nav-group-title,
+.app-shell.sidebar-collapsed .nav-label {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+  width: 0;
+}
+
+.app-shell.sidebar-collapsed .nav-link {
+  justify-content: center;
+  padding-left: 0.6rem;
+  padding-right: 0.6rem;
+}
+
+.app-shell.sidebar-collapsed .nav-icon {
+  transform: scale(1.16);
+}
 
 .content-shell {
   display: flex;
