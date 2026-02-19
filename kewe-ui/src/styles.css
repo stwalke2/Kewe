@@ -92,6 +92,7 @@ a { color: inherit; }
   display: flex;
   flex-direction: column;
   background: #f8f9fc;
+  min-width: 0;
 }
 .top-header {
   background: var(--surface);
@@ -103,9 +104,10 @@ a { color: inherit; }
 main {
   width: 100%;
   padding: 1.35rem 1.7rem 1.8rem;
+  min-width: 0;
 }
 
-.page-section { display: grid; gap: 1rem; }
+.page-section { display: grid; gap: 1rem; min-width: 0; }
 .page-header-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .page-header-row h2 { margin: 0; font-size: 1.65rem; }
 .page-header-row p { margin: 0.22rem 0 0; color: var(--muted); }
@@ -118,6 +120,7 @@ main {
   border-radius: 16px;
   box-shadow: var(--shadow-soft);
   padding: 1rem;
+  min-width: 0;
 }
 .table-card { padding: 1.15rem; }
 .section-card { padding: 1.1rem; }
@@ -215,7 +218,9 @@ button:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .table-scroll-wrap {
   width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .dimensions-table {
   min-width: 880px;
