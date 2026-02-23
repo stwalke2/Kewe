@@ -1,6 +1,6 @@
 package com.kewe.core.dimensions;
 
-import com.kewe.core.common.CanonicalObject;
+import com.kewe.core.businessobjects.BusinessObject;
 import org.springframework.data.mongodb.core.index.CompoundIndex;
 import org.springframework.data.mongodb.core.index.CompoundIndexes;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -16,26 +16,13 @@ import java.util.Map;
         @CompoundIndex(name = "idx_type_name", def = "{'typeCode': 1, 'name': 1}"),
         @CompoundIndex(name = "idx_type_status", def = "{'typeCode': 1, 'status': 1}")
 })
-public class DimensionNode extends CanonicalObject {
+public class DimensionNode extends BusinessObject {
 
-    private String typeCode;
-    private String code;
-    private String name;
-    private String description;
     private String parentId;
     private String path;
     private Integer depth;
     private Integer sortOrder;
     private Map<String, Object> attributes = new HashMap<>();
-
-    public String getTypeCode() { return typeCode; }
-    public void setTypeCode(String typeCode) { this.typeCode = typeCode; }
-    public String getCode() { return code; }
-    public void setCode(String code) { this.code = code; }
-    public String getName() { return name; }
-    public void setName(String name) { this.name = name; }
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
     public String getParentId() { return parentId; }
     public void setParentId(String parentId) { this.parentId = parentId; }
     public String getPath() { return path; }

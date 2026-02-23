@@ -146,7 +146,7 @@ export function AccountingDimensionsPage() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = 'accounting-dimensions.csv';
+    link.download = 'business-objects.csv';
     link.click();
     URL.revokeObjectURL(link.href);
   };
@@ -165,12 +165,12 @@ export function AccountingDimensionsPage() {
     <section className="page-section">
       <div className="page-header-row">
         <div>
-          <h2>Accounting Dimensions</h2>
-          <p>Search and review dimensions.</p>
+          <h2>Business Objects</h2>
+          <p>Search and review business objects.</p>
         </div>
         <div className="header-actions">
           <button className="btn btn-secondary" onClick={() => void loadNodes()}>Refresh</button>
-          <button className="btn btn-primary" onClick={() => navigate('/accounting-dimensions/new')}>New Dimension</button>
+          <button className="btn btn-primary" onClick={() => navigate('/business-objects/new')}>New Business Object</button>
         </div>
       </div>
 
@@ -233,7 +233,7 @@ export function AccountingDimensionsPage() {
               </thead>
               <tbody>
                 {filteredAndSortedNodes.map((node) => (
-                  <tr key={node.id} onClick={() => navigate(`/accounting-dimensions/${node.id}`)}>
+                  <tr key={node.id} onClick={() => navigate(`/business-objects/${node.id}`)}>
                     <td>{node.code}</td>
                     <td>{node.name}</td>
                     <td>{node.description || '—'}</td>
@@ -242,7 +242,7 @@ export function AccountingDimensionsPage() {
                     <td>{node.parentId ? nodeNameById.get(node.parentId) ?? '—' : 'Top level'}</td>
                   </tr>
                 ))}
-                {filteredAndSortedNodes.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No dimensions match the current filters.</p></div></td></tr>}
+                {filteredAndSortedNodes.length === 0 && <tr><td colSpan={6}><div className="empty-state"><p>No business objects match the current filters.</p></div></td></tr>}
               </tbody>
             </table>
           </div>

@@ -54,9 +54,9 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
     title: 'Supplier Invoices',
     subtitle: 'Manage invoice lifecycle, approvals, and posting in one place.',
   },
-  '/accounting-dimensions': {
-    title: 'Accounting Dimensions',
-    subtitle: 'Configure dimensions, hierarchies, and mappings for accounting rules.',
+  '/business-objects': {
+    title: 'Business Objects',
+    subtitle: 'Configure business objects, roles, hierarchies, and accounting defaults.',
   },
 };
 
@@ -64,11 +64,11 @@ export function Layout({ children }: PropsWithChildren) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
   const isInvoiceDetail = location.pathname.startsWith('/supplier-invoices/');
-  const isDimensionDetail = location.pathname.startsWith('/accounting-dimensions/');
+  const isDimensionDetail = location.pathname.startsWith('/business-objects/') || location.pathname.startsWith('/accounting-dimensions/');
   const meta = isInvoiceDetail
     ? { title: 'Invoice Detail', subtitle: 'Review invoice details, lines, and workflow actions.' }
     : isDimensionDetail
-      ? { title: 'Dimension Detail', subtitle: 'Manage dimension setup, hierarchy, and status actions.' }
+      ? { title: 'Business Object Detail', subtitle: 'Manage basic setup, roles, accounting/budget defaults, and overrides.' }
     : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
 
   return (
@@ -106,11 +106,11 @@ export function Layout({ children }: PropsWithChildren) {
               <span className="nav-label">Supplier Invoices</span>
             </NavLink>
             <NavLink
-              to="/accounting-dimensions"
+              to="/business-objects"
               className={({ isActive }) => (isActive || isDimensionDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><DimensionsIcon /></span>
-              <span className="nav-label">Accounting Dimensions</span>
+              <span className="nav-label">Business Objects</span>
             </NavLink>
           </nav>
         </div>
