@@ -92,3 +92,38 @@ export interface ApiErrorDetails {
   status?: number;
   message: string;
 }
+
+export interface ConfiguredField<T> {
+  defaultValue?: T;
+  allowOverride: boolean;
+  overrideReasonRequired: boolean;
+}
+
+export interface AccountingBudgetSetup {
+  [key: string]: ConfiguredField<boolean | string | undefined>;
+}
+
+export interface BusinessObjectType {
+  id: string;
+  code: string;
+  name: string;
+  objectKind: string;
+  status: string;
+  description?: string;
+  accountingBudgetDefaults: AccountingBudgetSetup;
+}
+
+export interface BusinessObjectFieldOverride {
+  value: boolean | string;
+  overrideReason?: string;
+}
+
+export interface BusinessObjectInstance {
+  id: string;
+  typeCode: string;
+  objectKind: string;
+  code: string;
+  name: string;
+  status: string;
+  accountingBudgetOverrides: Record<string, BusinessObjectFieldOverride>;
+}

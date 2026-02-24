@@ -2,8 +2,10 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { InvoiceDetailPage } from './pages/InvoiceDetailPage';
 import { InvoiceListPage } from './pages/InvoiceListPage';
-import { AccountingDimensionsPage } from './pages/AccountingDimensionsPage';
-import { AccountingDimensionDetailPage } from './pages/AccountingDimensionDetailPage';
+import { BusinessObjectTypesPage } from './pages/BusinessObjectTypesPage';
+import { BusinessObjectTypeDetailPage } from './pages/BusinessObjectTypeDetailPage';
+import { BusinessObjectsPage } from './pages/BusinessObjectsPage';
+import { BusinessObjectDetailPage } from './pages/BusinessObjectDetailPage';
 
 function App() {
   return (
@@ -12,12 +14,10 @@ function App() {
         <Route path="/" element={<Navigate to="/supplier-invoices" replace />} />
         <Route path="/supplier-invoices" element={<InvoiceListPage />} />
         <Route path="/supplier-invoices/:id" element={<InvoiceDetailPage />} />
-        <Route path="/business-objects" element={<AccountingDimensionsPage />} />
-        <Route path="/business-objects/new" element={<AccountingDimensionDetailPage />} />
-        <Route path="/business-objects/:id" element={<AccountingDimensionDetailPage />} />
-        <Route path="/accounting-dimensions" element={<Navigate to="/business-objects" replace />} />
-        <Route path="/accounting-dimensions/new" element={<Navigate to="/business-objects/new" replace />} />
-        <Route path="/accounting-dimensions/:id" element={<AccountingDimensionDetailPage />} />
+        <Route path="/business-object-types" element={<BusinessObjectTypesPage />} />
+        <Route path="/business-object-types/:code" element={<BusinessObjectTypeDetailPage />} />
+        <Route path="/business-objects" element={<BusinessObjectsPage />} />
+        <Route path="/business-objects/:id" element={<BusinessObjectDetailPage />} />
         <Route path="*" element={<Navigate to="/supplier-invoices" replace />} />
       </Routes>
     </Layout>
