@@ -117,4 +117,84 @@ class BusinessObjectIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountingBudgetDefaults.allowExpensePosting.defaultValue").value(true));
     }
+
+    @Test
+    void shouldSupportChargeObjectDefaultsInheritanceAndOverrideRules() throws Exception {
+        String typePayload = """
+                {
+                  "code": "PROJECT",
+                  "name": "Project",
+                  "objectKind": "Grant",
+                  "allowInstanceAccountingBudgetOverride": true,
+                  "accountingBudgetDefaults": {
+                    "chargeObjectEnabled": {"defaultValue": true, "allowOverride": true, "overrideReasonRequired": false},
+                    "budgetCheckPoint": {"defaultValue": "INVOICE", "allowOverride": false, "overrideReasonRequired": false},
+                    "liquiditySourceMode": {"defaultValue": "SELF", "allowOverride": true, "overrideReasonRequired": true}
+                  }
+                }
+                """;
+
+        mockMvc.perform(post("/api/business-object-types")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(typePayload))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accountingBudgetDefaults.chargeObjectEnabled.defaultValue").value(true))
+                .andExpect(jsonPath("$.accountingBudgetDefaults.budgetCheckPoint.defaultValue").value("INVOICE"));
+
+        String created = mockMvc.perform(post("/api/business-object-types/objects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "PROJECT",
+                                  "code": "P100",
+                                  "name": "Project 100"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.accountingBudgetOverrides").isMap())
+                .andReturn().getResponse().getContentAsString();
+
+        JsonNode node = objectMapper.readTree(created);
+        String objectId = node.get("id").asText();
+
+        mockMvc.perform(get("/api/business-object-types/PROJECT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountingBudgetDefaults.chargeObjectEnabled.defaultValue").value(true));
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {
+                                    "budgetCheckPoint": {"value": "PO"}
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Override is not allowed for field: budgetCheckPoint"));
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {
+                                    "liquiditySourceMode": {"value": "BRIDGE"}
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Override reason is required for field: liquiditySourceMode"));
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {
+                                    "liquiditySourceMode": {"value": "BRIDGE", "overrideReason": "Temporary bridge funding"}
+                                  }
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountingBudgetOverrides.liquiditySourceMode.value").value("BRIDGE"));
+    }
 }
