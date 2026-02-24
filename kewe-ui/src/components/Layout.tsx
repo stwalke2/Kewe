@@ -54,9 +54,13 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
     title: 'Supplier Invoices',
     subtitle: 'Manage invoice lifecycle, approvals, and posting in one place.',
   },
+  '/business-object-types': {
+    title: 'Business Object Types',
+    subtitle: 'Configure template defaults and accounting/budget behavior.',
+  },
   '/business-objects': {
     title: 'Business Objects',
-    subtitle: 'Configure business objects, roles, hierarchies, and accounting defaults.',
+    subtitle: 'Manage instance-level data and allowed accounting/budget overrides.',
   },
 };
 
@@ -64,12 +68,15 @@ export function Layout({ children }: PropsWithChildren) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const location = useLocation();
   const isInvoiceDetail = location.pathname.startsWith('/supplier-invoices/');
-  const isDimensionDetail = location.pathname.startsWith('/business-objects/') || location.pathname.startsWith('/accounting-dimensions/');
+  const isTypeDetail = location.pathname.startsWith('/business-object-types/');
+  const isObjectDetail = location.pathname.startsWith('/business-objects/');
   const meta = isInvoiceDetail
     ? { title: 'Invoice Detail', subtitle: 'Review invoice details, lines, and workflow actions.' }
-    : isDimensionDetail
-      ? { title: 'Business Object Detail', subtitle: 'Manage basic setup, roles, accounting/budget defaults, and overrides.' }
-    : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
+    : isTypeDetail
+      ? { title: 'Business Object Type Detail', subtitle: 'Manage default templates for accounting and budget behavior.' }
+      : isObjectDetail
+        ? { title: 'Business Object Detail', subtitle: 'Manage instance setup and accounting/budget overrides.' }
+        : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
 
   return (
     <div className={`app-shell${sidebarCollapsed ? ' sidebar-collapsed' : ''}`}>
@@ -106,8 +113,15 @@ export function Layout({ children }: PropsWithChildren) {
               <span className="nav-label">Supplier Invoices</span>
             </NavLink>
             <NavLink
+              to="/business-object-types"
+              className={({ isActive }) => (isActive || isTypeDetail ? 'nav-link active' : 'nav-link')}
+            >
+              <span className="nav-icon"><DimensionsIcon /></span>
+              <span className="nav-label">Business Object Types</span>
+            </NavLink>
+            <NavLink
               to="/business-objects"
-              className={({ isActive }) => (isActive || isDimensionDetail ? 'nav-link active' : 'nav-link')}
+              className={({ isActive }) => (isActive || isObjectDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><DimensionsIcon /></span>
               <span className="nav-label">Business Objects</span>

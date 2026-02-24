@@ -181,3 +181,31 @@ export function getErrorDetails(error: unknown): ApiErrorDetails {
     message: value?.message ?? getErrorMessage(error),
   };
 }
+
+export async function fetchBusinessObjectTypes() {
+  return request<import('./api/types').BusinessObjectType[]>('/business-object-types');
+}
+
+export async function fetchBusinessObjectType(code: string) {
+  return request<import('./api/types').BusinessObjectType>(`/business-object-types/${code}`);
+}
+
+export async function updateBusinessObjectType(code: string, payload: unknown) {
+  return request<import('./api/types').BusinessObjectType>(`/business-object-types/${code}`, { method: 'PUT', body: toBody(payload) });
+}
+
+export async function fetchBusinessObjects(typeCode?: string) {
+  return request<import('./api/types').BusinessObjectInstance[]>(`/business-object-types/objects${typeCode ? `?typeCode=${encodeURIComponent(typeCode)}` : ''}`);
+}
+
+export async function fetchBusinessObject(id: string) {
+  return request<import('./api/types').BusinessObjectInstance>(`/business-object-types/objects/${id}`);
+}
+
+export async function createBusinessObject(payload: unknown) {
+  return request<import('./api/types').BusinessObjectInstance>('/business-object-types/objects', { method: 'POST', body: toBody(payload) });
+}
+
+export async function updateBusinessObjectOverrides(id: string, overrides: unknown) {
+  return request<import('./api/types').BusinessObjectInstance>(`/business-object-types/objects/${id}/accounting-budget-override`, { method: 'PUT', body: toBody({ overrides }) });
+}

@@ -11,6 +11,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class BusinessObjectService {
@@ -45,8 +46,19 @@ public class BusinessObjectService {
         }
     }
 
-    public List<BusinessObjectType> getTypes() {
-        return typeRepository.findAll();
+    public List<BusinessObjectType> getTypes() { return typeRepository.findAll(); }
+
+    public BusinessObjectType getTypeByCode(String code) { return getType(code); }
+
+    public BusinessObjectType updateType(String code, BusinessObjectTypeRequest request) {
+        BusinessObjectType type = getType(code);
+        type.setName(request.getName().trim());
+        type.setDescription(request.getDescription());
+        type.setObjectKind(request.getObjectKind().trim());
+        type.setAllowInstanceAccountingBudgetOverride(Boolean.TRUE.equals(request.getAllowInstanceAccountingBudgetOverride()));
+        type.setAccountingBudgetDefaults(request.getAccountingBudgetDefaults());
+        touchUpdate(type);
+        return typeRepository.save(type);
     }
 
     public BusinessObjectType updateTypeDefaults(String code, AccountingBudgetDefaultsRequest request) {
@@ -54,6 +66,18 @@ public class BusinessObjectService {
         type.setAccountingBudgetDefaults(request.getAccountingBudgetDefaults());
         touchUpdate(type);
         return typeRepository.save(type);
+    }
+
+    public List<BusinessObjectInstance> getObjects(String typeCode) {
+        if (!StringUtils.hasText(typeCode)) {
+            return objectRepository.findAll();
+        }
+        return objectRepository.findByTypeCode(normalizeCode(typeCode));
+    }
+
+    public BusinessObjectInstance getObjectById(String id) {
+        return objectRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Business object not found"));
     }
 
     public BusinessObjectInstance createObject(BusinessObjectRequest request) {
@@ -71,17 +95,7 @@ public class BusinessObjectService {
         object.setHierarchies(request.getHierarchies());
         object.setRoles(request.getRoles());
 
-        if (request.getAccountingBudgetOverride() != null) {
-            if (!type.isAllowInstanceAccountingBudgetOverride()) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This type does not allow accounting/budget overrides");
-            }
-            if (requiresReason(request.getAccountingBudgetOverride()) && !StringUtils.hasText(request.getOverrideReason())) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Override reason is required by configuration");
-            }
-            object.setAccountingBudgetSetup(request.getAccountingBudgetOverride());
-        } else {
-            object.setAccountingBudgetSetup(type.getAccountingBudgetDefaults());
-        }
+        validateAndApplyOverrides(type, object, request.getAccountingBudgetOverride());
 
         touchCreate(object);
         try {
@@ -91,33 +105,37 @@ public class BusinessObjectService {
         }
     }
 
-    public BusinessObjectInstance overrideInstanceAccountingBudget(String id, AccountingBudgetDefaultsRequest request, String reason) {
-        BusinessObjectInstance object = objectRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Business object not found"));
+    public BusinessObjectInstance overrideInstanceAccountingBudget(String id, Map<String, BusinessObjectFieldOverride> overrides) {
+        BusinessObjectInstance object = getObjectById(id);
         BusinessObjectType type = getType(object.getTypeCode());
-        if (!type.isAllowInstanceAccountingBudgetOverride()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This type does not allow accounting/budget overrides");
-        }
-        if (requiresReason(request.getAccountingBudgetDefaults()) && !StringUtils.hasText(reason)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Override reason is required by configuration");
-        }
-        object.setAccountingBudgetSetup(request.getAccountingBudgetDefaults());
+        validateAndApplyOverrides(type, object, overrides);
         touchUpdate(object);
         return objectRepository.save(object);
     }
 
-    private boolean requiresReason(AccountingBudgetSetup setup) {
-        return setup.getAllowExpense().isOverrideRequiresReason()
-                || setup.getAllowRevenue().isOverrideRequiresReason()
-                || setup.getBudgetRequired().isOverrideRequiresReason()
-                || setup.getBudgetControlLevel().isOverrideRequiresReason()
-                || setup.getDefaultLedgerAccount().isOverrideRequiresReason()
-                || setup.getDefaultCompany().isOverrideRequiresReason()
-                || setup.getDefaultFunction().isOverrideRequiresReason()
-                || setup.getEnableEncumbrance().isOverrideRequiresReason()
-                || setup.getIdcEligible().isOverrideRequiresReason()
-                || setup.getCashManaged().isOverrideRequiresReason()
-                || setup.getCapitalizable().isOverrideRequiresReason();
+    private void validateAndApplyOverrides(BusinessObjectType type,
+                                           BusinessObjectInstance object,
+                                           Map<String, BusinessObjectFieldOverride> overrides) {
+        if (overrides == null || overrides.isEmpty()) {
+            return;
+        }
+        if (!type.isAllowInstanceAccountingBudgetOverride()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "This type does not allow accounting/budget overrides");
+        }
+
+        overrides.forEach((field, value) -> {
+            ConfiguredField<?> config = type.getAccountingBudgetDefaults().getFieldConfig(field);
+            if (config == null) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown accounting/budget field: " + field);
+            }
+            if (!config.isAllowOverride()) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Override is not allowed for field: " + field);
+            }
+            if (config.isOverrideReasonRequired() && (value == null || !StringUtils.hasText(value.getOverrideReason()))) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Override reason is required for field: " + field);
+            }
+        });
+        object.setAccountingBudgetOverrides(overrides);
     }
 
     private BusinessObjectType getType(String code) {

@@ -1,6 +1,7 @@
 package com.kewe.core.businessobjects;
 
 import com.kewe.core.businessobjects.dto.AccountingBudgetDefaultsRequest;
+import com.kewe.core.businessobjects.dto.AccountingBudgetOverrideRequest;
 import com.kewe.core.businessobjects.dto.BusinessObjectRequest;
 import com.kewe.core.businessobjects.dto.BusinessObjectTypeRequest;
 import jakarta.validation.Valid;
@@ -20,14 +21,18 @@ public class BusinessObjectController {
     }
 
     @GetMapping
-    public List<BusinessObjectType> getTypes() {
-        return service.getTypes();
-    }
+    public List<BusinessObjectType> getTypes() { return service.getTypes(); }
+
+    @GetMapping("/{code}")
+    public BusinessObjectType getType(@PathVariable String code) { return service.getTypeByCode(code); }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public BusinessObjectType createType(@Valid @RequestBody BusinessObjectTypeRequest request) {
-        return service.createType(request);
+    public BusinessObjectType createType(@Valid @RequestBody BusinessObjectTypeRequest request) { return service.createType(request); }
+
+    @PutMapping("/{code}")
+    public BusinessObjectType updateType(@PathVariable String code, @Valid @RequestBody BusinessObjectTypeRequest request) {
+        return service.updateType(code, request);
     }
 
     @PutMapping("/{code}/accounting-budget-defaults")
@@ -35,6 +40,14 @@ public class BusinessObjectController {
                                              @Valid @RequestBody AccountingBudgetDefaultsRequest request) {
         return service.updateTypeDefaults(code, request);
     }
+
+    @GetMapping("/objects")
+    public List<BusinessObjectInstance> getObjects(@RequestParam(required = false) String typeCode) {
+        return service.getObjects(typeCode);
+    }
+
+    @GetMapping("/objects/{id}")
+    public BusinessObjectInstance getObjectById(@PathVariable String id) { return service.getObjectById(id); }
 
     @PostMapping("/objects")
     @ResponseStatus(HttpStatus.CREATED)
@@ -44,8 +57,7 @@ public class BusinessObjectController {
 
     @PutMapping("/objects/{id}/accounting-budget-override")
     public BusinessObjectInstance overrideAccountingBudget(@PathVariable String id,
-                                                           @RequestParam(required = false) String reason,
-                                                           @Valid @RequestBody AccountingBudgetDefaultsRequest request) {
-        return service.overrideInstanceAccountingBudget(id, request, reason);
+                                                           @Valid @RequestBody AccountingBudgetOverrideRequest request) {
+        return service.overrideInstanceAccountingBudget(id, request.getOverrides());
     }
 }

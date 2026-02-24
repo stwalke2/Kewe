@@ -4,7 +4,9 @@ import com.kewe.core.common.CanonicalObject;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public abstract class BusinessObject extends CanonicalObject {
 
@@ -17,7 +19,7 @@ public abstract class BusinessObject extends CanonicalObject {
     private String visibility;
     private List<HierarchyAssignment> hierarchies = new ArrayList<>();
     private List<RoleAssignment> roles = new ArrayList<>();
-    private AccountingBudgetSetup accountingBudgetSetup = new AccountingBudgetSetup();
+    private Map<String, BusinessObjectFieldOverride> accountingBudgetOverrides = new HashMap<>();
 
     public String getObjectKind() { return objectKind; }
     public void setObjectKind(String objectKind) { this.objectKind = objectKind; }
@@ -37,6 +39,6 @@ public abstract class BusinessObject extends CanonicalObject {
     public void setHierarchies(List<HierarchyAssignment> hierarchies) { this.hierarchies = hierarchies; }
     public List<RoleAssignment> getRoles() { return roles; }
     public void setRoles(List<RoleAssignment> roles) { this.roles = roles; }
-    public AccountingBudgetSetup getAccountingBudgetSetup() { return accountingBudgetSetup; }
-    public void setAccountingBudgetSetup(AccountingBudgetSetup accountingBudgetSetup) { this.accountingBudgetSetup = accountingBudgetSetup; }
+    public Map<String, BusinessObjectFieldOverride> getAccountingBudgetOverrides() { return accountingBudgetOverrides; }
+    public void setAccountingBudgetOverrides(Map<String, BusinessObjectFieldOverride> accountingBudgetOverrides) { this.accountingBudgetOverrides = accountingBudgetOverrides; }
 }

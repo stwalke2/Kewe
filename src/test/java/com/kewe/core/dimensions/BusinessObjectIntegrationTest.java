@@ -14,6 +14,7 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -39,22 +40,26 @@ class BusinessObjectIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    void shouldCreateTypeAndObjectAndAllowOverride() throws Exception {
+    void shouldCreateTypeAndSupportInstanceOverrideGuardrails() throws Exception {
+        String typePayload = """
+                {
+                  "code": "FUND",
+                  "name": "Fund",
+                  "objectKind": "FundingSource",
+                  "allowInstanceAccountingBudgetOverride": true,
+                  "accountingBudgetDefaults": {
+                    "budgetRequired": {"defaultValue": true, "allowOverride": false, "overrideReasonRequired": false},
+                    "allowExpensePosting": {"defaultValue": true, "allowOverride": true, "overrideReasonRequired": true},
+                    "budgetControlLevel": {"defaultValue": "HARD", "allowOverride": true, "overrideReasonRequired": false}
+                  }
+                }
+                """;
+
         mockMvc.perform(post("/api/business-object-types")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "code": "FUND",
-                                  "name": "Fund",
-                                  "objectKind": "FundingSource",
-                                  "allowInstanceAccountingBudgetOverride": true,
-                                  "accountingBudgetDefaults": {
-                                    "budgetRequired": {"value": true, "allowOverride": true, "overrideRequiresReason": true}
-                                  }
-                                }
-                                """))
+                        .content(typePayload))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.code").value("FUND"));
+                .andExpect(jsonPath("$.accountingBudgetDefaults.budgetControlLevel.defaultValue").value("HARD"));
 
         String created = mockMvc.perform(post("/api/business-object-types/objects")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -62,30 +67,54 @@ class BusinessObjectIntegrationTest {
                                 {
                                   "typeCode": "FUND",
                                   "code": "F100",
-                                  "name": "General Fund",
-                                  "roles": [{"roleCode": "Manager", "assigneeId": "user-1"}],
-                                  "hierarchies": [{"hierarchyCode": "PRIMARY"}],
-                                  "accountingBudgetOverride": {
-                                    "budgetRequired": {"value": false, "allowOverride": true, "overrideRequiresReason": false}
-                                  },
-                                  "overrideReason": "Initial setup"
+                                  "name": "General Fund"
                                 }
                                 """))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.roles[0].roleCode").value("Manager"))
+                .andExpect(jsonPath("$.accountingBudgetOverrides").isMap())
                 .andReturn().getResponse().getContentAsString();
 
         JsonNode node = objectMapper.readTree(created);
-        mockMvc.perform(put("/api/business-object-types/objects/" + node.get("id").asText() + "/accounting-budget-override?reason=Policy%20change")
+        String objectId = node.get("id").asText();
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "accountingBudgetDefaults": {
-                                    "allowExpense": {"value": true, "allowOverride": true, "overrideRequiresReason": false}
+                                  "overrides": {
+                                    "budgetRequired": {"value": false}
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Override is not allowed for field: budgetRequired"));
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {
+                                    "allowExpensePosting": {"value": false}
+                                  }
+                                }
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Override reason is required for field: allowExpensePosting"));
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {
+                                    "allowExpensePosting": {"value": false, "overrideReason": "Policy exception"}
                                   }
                                 }
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.accountingBudgetSetup.allowExpense.value").value(true));
+                .andExpect(jsonPath("$.accountingBudgetOverrides.allowExpensePosting.value").value(false));
+
+        mockMvc.perform(get("/api/business-object-types/FUND"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountingBudgetDefaults.allowExpensePosting.defaultValue").value(true));
     }
 }

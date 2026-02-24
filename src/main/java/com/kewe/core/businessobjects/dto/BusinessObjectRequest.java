@@ -1,13 +1,15 @@
 package com.kewe.core.businessobjects.dto;
 
-import com.kewe.core.businessobjects.AccountingBudgetSetup;
+import com.kewe.core.businessobjects.BusinessObjectFieldOverride;
 import com.kewe.core.businessobjects.HierarchyAssignment;
 import com.kewe.core.businessobjects.RoleAssignment;
 import jakarta.validation.constraints.NotBlank;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 public class BusinessObjectRequest {
 
@@ -22,8 +24,7 @@ public class BusinessObjectRequest {
     private String visibility;
     private List<HierarchyAssignment> hierarchies = new ArrayList<>();
     private List<RoleAssignment> roles = new ArrayList<>();
-    private AccountingBudgetSetup accountingBudgetOverride;
-    private String overrideReason;
+    private Map<String, BusinessObjectFieldOverride> accountingBudgetOverride = new HashMap<>();
 
     public String getTypeCode() { return typeCode; }
     public void setTypeCode(String typeCode) { this.typeCode = typeCode; }
@@ -41,8 +42,6 @@ public class BusinessObjectRequest {
     public void setHierarchies(List<HierarchyAssignment> hierarchies) { this.hierarchies = hierarchies; }
     public List<RoleAssignment> getRoles() { return roles; }
     public void setRoles(List<RoleAssignment> roles) { this.roles = roles; }
-    public AccountingBudgetSetup getAccountingBudgetOverride() { return accountingBudgetOverride; }
-    public void setAccountingBudgetOverride(AccountingBudgetSetup accountingBudgetOverride) { this.accountingBudgetOverride = accountingBudgetOverride; }
-    public String getOverrideReason() { return overrideReason; }
-    public void setOverrideReason(String overrideReason) { this.overrideReason = overrideReason; }
+    public Map<String, BusinessObjectFieldOverride> getAccountingBudgetOverride() { return accountingBudgetOverride; }
+    public void setAccountingBudgetOverride(Map<String, BusinessObjectFieldOverride> accountingBudgetOverride) { this.accountingBudgetOverride = accountingBudgetOverride; }
 }
