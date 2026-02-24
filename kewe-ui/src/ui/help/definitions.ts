@@ -153,6 +153,10 @@ export const helpDefinitions = {
     label: 'Default Bridging Object',
     definition: 'Specifies a default bridging object that Kewe will suggest when charging this object (placeholder until lookup exists).',
   },
+  inboundAllocationSourceIds: {
+    label: 'Inbound Allocation Sources',
+    definition: 'Ordered list of charge-object-enabled business objects that can allocate inbound funding to this object. The list order is the draw priority.',
+  },
   fundingSplitAllowed: {
     label: 'Funding Split Allowed',
     definition: 'If enabled, a single charge may be split across multiple funding sources.',

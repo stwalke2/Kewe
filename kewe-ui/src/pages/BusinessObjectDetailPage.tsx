@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchBusinessObject, fetchBusinessObjectType, fetchDimensionTree, updateBusinessObjectOverrides } from '../api';
+import { fetchBusinessObject, fetchBusinessObjectType, fetchBusinessObjectTypes, fetchBusinessObjects, fetchDimensionTree, updateBusinessObjectOverrides } from '../api';
 import type { BusinessObjectInstance, BusinessObjectType, DimensionNode } from '../api/types';
 import { HelpTip } from '../ui/help/HelpTip';
 import {
@@ -18,6 +18,8 @@ export function BusinessObjectDetailPage() {
   const [obj, setObj] = useState<BusinessObjectInstance | null>(null);
   const [type, setType] = useState<BusinessObjectType | null>(null);
   const [lookupOptions, setLookupOptions] = useState<LookupOptions>({});
+  const [allObjects, setAllObjects] = useState<BusinessObjectInstance[]>([]);
+  const [allTypes, setAllTypes] = useState<BusinessObjectType[]>([]);
 
   useEffect(() => {
     void (async () => {
@@ -29,16 +31,20 @@ export function BusinessObjectDetailPage() {
 
   useEffect(() => {
     void (async () => {
-      const [companies, functions, ledgerAccounts] = await Promise.allSettled([
+      const [companies, functions, ledgerAccounts, types, objects] = await Promise.allSettled([
         fetchDimensionTree('COMPANY'),
         fetchDimensionTree('FUNCTION'),
         fetchDimensionTree('LEDGER_ACCOUNT'),
+        fetchBusinessObjectTypes(),
+        fetchBusinessObjects(),
       ]);
       setLookupOptions({
         defaultCompanyId: mapNodes(companies.status === 'fulfilled' ? companies.value : []),
         defaultFunctionId: mapNodes(functions.status === 'fulfilled' ? functions.value : []),
         defaultLedgerAccountId: mapNodes(ledgerAccounts.status === 'fulfilled' ? ledgerAccounts.value : []),
       });
+      setAllTypes(types.status === 'fulfilled' ? types.value : []);
+      setAllObjects(objects.status === 'fulfilled' ? objects.value : []);
     })();
   }, []);
 
@@ -46,6 +52,19 @@ export function BusinessObjectDetailPage() {
     () => ACCOUNTING_BUDGET_SECTIONS.map((section) => ({ section, fields: ACCOUNTING_BUDGET_FIELDS.filter((field) => field.section === section) })),
     [],
   );
+
+  const chargeObjectOptions = useMemo(() => {
+    const typeByCode = new Map(allTypes.map((value) => [value.code, value]));
+    return allObjects
+      .filter((objectValue) => {
+        if (obj && objectValue.id === obj.id) return false;
+        const objectType = typeByCode.get(objectValue.typeCode);
+        const overrideValue = objectValue.accountingBudgetOverrides?.chargeObjectEnabled?.value;
+        const defaultValue = objectType?.accountingBudgetDefaults?.chargeObjectEnabled?.defaultValue;
+        return normalizeValue(overrideValue ?? defaultValue, 'toggle') === true;
+      })
+      .map((objectValue) => ({ value: objectValue.id, label: `${objectValue.code} — ${objectValue.name}` }));
+  }, [allObjects, allTypes, obj]);
 
   if (!obj || !type) return <p>Loading…</p>;
 
@@ -55,7 +74,7 @@ export function BusinessObjectDetailPage() {
     const defaultValue = type.accountingBudgetDefaults?.[field.key]?.defaultValue;
     const nextOverrides = { ...overrides };
     if (enabled) {
-      nextOverrides[field.key] = { value: defaultValue === undefined ? (field.controlType === 'list' ? [] : '') : defaultValue };
+      nextOverrides[field.key] = { value: defaultValue === undefined ? (field.controlType === 'list' || field.controlType === 'inboundAllocations' ? [] : '') : defaultValue };
     } else {
       delete nextOverrides[field.key];
     }
@@ -84,7 +103,7 @@ export function BusinessObjectDetailPage() {
     const defaultValue = type.accountingBudgetDefaults?.[field.key]?.defaultValue;
     const hasOverride = Boolean(overrides[field.key]);
     const effectiveValue = hasOverride ? overrides[field.key].value : defaultValue;
-    const value = normalizeValue(effectiveValue, field.controlType);
+    const value = normalizeValue(effectiveValue, field.controlType === 'inboundAllocations' ? 'list' : field.controlType);
 
     if (field.controlType === 'toggle') {
       return (
@@ -127,6 +146,70 @@ export function BusinessObjectDetailPage() {
       );
     }
 
+    if (field.controlType === 'chargeObjectLookup') {
+      return (
+        <select
+          value={String(value)}
+          disabled={!hasOverride}
+          onChange={(e) => updateOverride(field.key, { value: e.target.value })}
+        >
+          <option value=''>Select charge object…</option>
+          {chargeObjectOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      );
+    }
+
+    if (field.controlType === 'inboundAllocations') {
+      const listValue = Array.isArray(value) ? value : [];
+      return (
+        <div className='stack-xs'>
+          <div className='stack-xs'>
+            {listValue.map((sourceId, index) => (
+              <div key={`${sourceId}-${index}`} className='inline-form-row'>
+                <select
+                  value={sourceId}
+                  disabled={!hasOverride}
+                  onChange={(e) => {
+                    const next = [...listValue];
+                    next[index] = e.target.value;
+                    updateOverride(field.key, { value: next.filter(Boolean) });
+                  }}
+                >
+                  <option value=''>Select source…</option>
+                  {chargeObjectOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <span className='micro-muted'>Priority {index + 1}</span>
+                <button
+                  type='button'
+                  className='btn btn-secondary btn-inline'
+                  disabled={!hasOverride}
+                  onClick={() => updateOverride(field.key, { value: listValue.filter((_, rowIndex) => rowIndex !== index) })}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <select
+            value=''
+            disabled={!hasOverride}
+            onChange={(e) => {
+              if (!e.target.value) return;
+              updateOverride(field.key, { value: [...listValue, e.target.value] });
+            }}
+          >
+            <option value=''>Add inbound allocation source…</option>
+            {chargeObjectOptions.filter((option) => !listValue.includes(option.value)).map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
 
     if (field.controlType === 'list') {
       const listValue = Array.isArray(value) ? value.join(', ') : '';
