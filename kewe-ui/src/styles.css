@@ -479,6 +479,84 @@ th:hover { background: #f3f6fb; color: #475467; }
   select { max-width: none; }
 }
 
-.help-tip-wrap { position: relative; display: inline-flex; margin-left: 0.35rem; }
-.help-tip { width: 1.1rem; height: 1.1rem; border-radius: 50%; border: 1px solid #667; background: #fff; cursor: pointer; font-size: 0.75rem; }
-.help-tip-popover { position: absolute; top: 1.4rem; left: 0; z-index: 5; width: 22rem; max-width: 80vw; background: #1f2937; color: #fff; padding: 0.5rem; border-radius: 0.4rem; display: grid; gap: 0.25rem; font-size: 0.8rem; }
+.help-tip-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.35rem;
+}
+
+.help-tip {
+  width: 1.2rem;
+  height: 1.2rem;
+  border-radius: 999px;
+  border: 1px solid #cdd5df;
+  background: #fff;
+  color: #344054;
+  cursor: help;
+  font-size: 0.74rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: border-color 180ms ease, color 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+}
+
+.help-tip:hover,
+.help-tip-wrap:focus-within .help-tip {
+  border-color: #98a2b3;
+  color: #101828;
+  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(17, 24, 39, 0.08);
+}
+
+.help-tip-popover {
+  position: absolute;
+  z-index: 20;
+  left: 50%;
+  bottom: calc(100% + 0.7rem);
+  transform: translateX(-50%) translateY(4px);
+  width: min(20rem, 80vw);
+  background: #111827;
+  color: #f8fafc;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.35);
+  padding: 0.65rem 0.75rem;
+  display: grid;
+  gap: 0.25rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 150ms ease, transform 150ms ease, visibility 150ms ease;
+}
+
+.help-tip-popover::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  width: 0.6rem;
+  height: 0.6rem;
+  background: #111827;
+  border-right: 1px solid rgba(255, 255, 255, 0.12);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.help-tip-popover strong {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: #fff;
+}
+
+.help-tip-wrap:hover .help-tip-popover,
+.help-tip-wrap:focus-within .help-tip-popover {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(-50%) translateY(0);
+}

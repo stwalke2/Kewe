@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useId } from 'react';
 import { helpDefinitions, type HelpTerm } from './definitions';
 
 export function HelpTip({ term }: { term: HelpTerm }) {
-  const [open, setOpen] = useState(false);
   const definition = helpDefinitions[term];
+  const tooltipId = useId();
 
   return (
     <span className="help-tip-wrap">
@@ -11,18 +11,14 @@ export function HelpTip({ term }: { term: HelpTerm }) {
         type="button"
         className="help-tip"
         aria-label={`Help: ${definition.label}`}
-        onFocus={() => setOpen(true)}
-        onBlur={() => setOpen(false)}
-        onClick={() => setOpen((value) => !value)}
+        aria-describedby={tooltipId}
       >
         ?
       </button>
-      {open && (
-        <span role="tooltip" className="help-tip-popover">
-          <strong>{definition.label}</strong>
-          <span>{definition.definition}</span>
-        </span>
-      )}
+      <span id={tooltipId} role="tooltip" className="help-tip-popover">
+        <strong>{definition.label}</strong>
+        <span>{definition.definition}</span>
+      </span>
     </span>
   );
 }
