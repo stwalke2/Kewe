@@ -129,7 +129,8 @@ class BusinessObjectIntegrationTest {
                   "accountingBudgetDefaults": {
                     "chargeObjectEnabled": {"defaultValue": true, "allowOverride": true, "overrideReasonRequired": false},
                     "budgetCheckPoint": {"defaultValue": "INVOICE", "allowOverride": false, "overrideReasonRequired": false},
-                    "liquiditySourceMode": {"defaultValue": "SELF", "allowOverride": true, "overrideReasonRequired": true}
+                    "liquiditySourceMode": {"defaultValue": "SELF", "allowOverride": true, "overrideReasonRequired": true},
+                    "inboundAllocationSourceIds": {"defaultValue": ["SRC1", "SRC2"], "allowOverride": true, "overrideReasonRequired": false}
                   }
                 }
                 """;
@@ -139,7 +140,8 @@ class BusinessObjectIntegrationTest {
                         .content(typePayload))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.accountingBudgetDefaults.chargeObjectEnabled.defaultValue").value(true))
-                .andExpect(jsonPath("$.accountingBudgetDefaults.budgetCheckPoint.defaultValue").value("INVOICE"));
+                .andExpect(jsonPath("$.accountingBudgetDefaults.budgetCheckPoint.defaultValue").value("INVOICE"))
+                .andExpect(jsonPath("$.accountingBudgetDefaults.inboundAllocationSourceIds.defaultValue[0]").value("SRC1"));
 
         String created = mockMvc.perform(post("/api/business-object-types/objects")
                         .contentType(MediaType.APPLICATION_JSON)

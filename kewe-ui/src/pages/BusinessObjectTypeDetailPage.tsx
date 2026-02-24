@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { fetchBusinessObjectType, fetchDimensionTree, updateBusinessObjectType } from '../api';
-import type { BusinessObjectType, ConfiguredField, DimensionNode } from '../api/types';
+import { fetchBusinessObjectType, fetchBusinessObjectTypes, fetchBusinessObjects, fetchDimensionTree, updateBusinessObjectType } from '../api';
+import type { BusinessObjectInstance, BusinessObjectType, ConfiguredField, DimensionNode } from '../api/types';
 import { HelpTip } from '../ui/help/HelpTip';
 import {
   ACCOUNTING_BUDGET_FIELDS,
@@ -18,6 +18,8 @@ export function BusinessObjectTypeDetailPage() {
   const [tab, setTab] = useState<Tab>('basic');
   const [model, setModel] = useState<BusinessObjectType | null>(null);
   const [lookupOptions, setLookupOptions] = useState<LookupOptions>({});
+  const [allObjects, setAllObjects] = useState<BusinessObjectInstance[]>([]);
+  const [allTypes, setAllTypes] = useState<BusinessObjectType[]>([]);
 
   useEffect(() => {
     void fetchBusinessObjectType(code).then(setModel);
@@ -25,16 +27,20 @@ export function BusinessObjectTypeDetailPage() {
 
   useEffect(() => {
     void (async () => {
-      const [companies, functions, ledgerAccounts] = await Promise.allSettled([
+      const [companies, functions, ledgerAccounts, types, objects] = await Promise.allSettled([
         fetchDimensionTree('COMPANY'),
         fetchDimensionTree('FUNCTION'),
         fetchDimensionTree('LEDGER_ACCOUNT'),
+        fetchBusinessObjectTypes(),
+        fetchBusinessObjects(),
       ]);
       setLookupOptions({
         defaultCompanyId: mapNodes(companies.status === 'fulfilled' ? companies.value : []),
         defaultFunctionId: mapNodes(functions.status === 'fulfilled' ? functions.value : []),
         defaultLedgerAccountId: mapNodes(ledgerAccounts.status === 'fulfilled' ? ledgerAccounts.value : []),
       });
+      setAllTypes(types.status === 'fulfilled' ? types.value : []);
+      setAllObjects(objects.status === 'fulfilled' ? objects.value : []);
     })();
   }, []);
 
@@ -43,13 +49,25 @@ export function BusinessObjectTypeDetailPage() {
     [],
   );
 
+  const chargeObjectOptions = useMemo(() => {
+    const typeByCode = new Map(allTypes.map((value) => [value.code, value]));
+    return allObjects
+      .filter((objectValue) => {
+        const objectType = typeByCode.get(objectValue.typeCode);
+        const overrideValue = objectValue.accountingBudgetOverrides?.chargeObjectEnabled?.value;
+        const defaultValue = objectType?.accountingBudgetDefaults?.chargeObjectEnabled?.defaultValue;
+        return normalizeValue(overrideValue ?? defaultValue, 'toggle') === true;
+      })
+      .map((objectValue) => ({ value: objectValue.id, label: `${objectValue.code} — ${objectValue.name}` }));
+  }, [allObjects, allTypes]);
+
   if (!model) return <p>Loading…</p>;
 
   const updateField = (field: AccountingBudgetFieldMeta, patch: Partial<ConfiguredField<boolean | string | string[] | undefined>>) => {
     const current = model.accountingBudgetDefaults?.[field.key] ?? {
       allowOverride: false,
       overrideReasonRequired: false,
-      defaultValue: field.controlType === 'toggle' ? false : field.controlType === 'list' ? [] : '',
+      defaultValue: field.controlType === 'toggle' ? false : field.controlType === 'list' || field.controlType === 'inboundAllocations' ? [] : '',
     };
     setModel({
       ...model,
@@ -65,7 +83,7 @@ export function BusinessObjectTypeDetailPage() {
 
   const renderControl = (field: AccountingBudgetFieldMeta) => {
     const configured = model.accountingBudgetDefaults?.[field.key];
-    const value = normalizeValue(configured?.defaultValue, field.controlType);
+    const value = normalizeValue(configured?.defaultValue, field.controlType === 'inboundAllocations' ? 'list' : field.controlType);
     if (field.controlType === 'toggle') {
       return (
         <label className='switch'>
@@ -102,6 +120,63 @@ export function BusinessObjectTypeDetailPage() {
       );
     }
 
+    if (field.controlType === 'chargeObjectLookup') {
+      return (
+        <select value={String(value)} onChange={(e) => updateField(field, { defaultValue: e.target.value })}>
+          <option value=''>Select charge object…</option>
+          {chargeObjectOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+      );
+    }
+
+    if (field.controlType === 'inboundAllocations') {
+      const listValue = Array.isArray(value) ? value : [];
+      return (
+        <div className='stack-xs'>
+          <div className='stack-xs'>
+            {listValue.map((sourceId, index) => (
+              <div key={`${sourceId}-${index}`} className='inline-form-row'>
+                <select
+                  value={sourceId}
+                  onChange={(e) => {
+                    const next = [...listValue];
+                    next[index] = e.target.value;
+                    updateField(field, { defaultValue: next.filter(Boolean) });
+                  }}
+                >
+                  <option value=''>Select source…</option>
+                  {chargeObjectOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
+                <span className='micro-muted'>Priority {index + 1}</span>
+                <button
+                  type='button'
+                  className='btn btn-secondary btn-inline'
+                  onClick={() => updateField(field, { defaultValue: listValue.filter((_, rowIndex) => rowIndex !== index) })}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+          <select
+            value=''
+            onChange={(e) => {
+              if (!e.target.value) return;
+              updateField(field, { defaultValue: [...listValue, e.target.value] });
+            }}
+          >
+            <option value=''>Add inbound allocation source…</option>
+            {chargeObjectOptions.filter((option) => !listValue.includes(option.value)).map((option) => (
+              <option key={option.value} value={option.value}>{option.label}</option>
+            ))}
+          </select>
+        </div>
+      );
+    }
 
     if (field.controlType === 'list') {
       const listValue = Array.isArray(value) ? value.join(', ') : '';

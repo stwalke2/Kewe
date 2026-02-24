@@ -1,4 +1,4 @@
-export type AccountingBudgetControlType = 'toggle' | 'select' | 'lookup' | 'text' | 'list';
+export type AccountingBudgetControlType = 'toggle' | 'select' | 'lookup' | 'text' | 'list' | 'chargeObjectLookup' | 'inboundAllocations';
 
 export interface AccountingBudgetFieldMeta {
   key: string;
@@ -54,7 +54,8 @@ export const ACCOUNTING_BUDGET_FIELDS: AccountingBudgetFieldMeta[] = [
   { key: 'bridgingAllowed', label: 'Bridging Allowed', helpTerm: 'bridgingAllowed', section: 'Charge Object Settings', controlType: 'toggle' },
   { key: 'bridgingRequired', label: 'Bridging Required', helpTerm: 'bridgingRequired', section: 'Charge Object Settings', controlType: 'toggle' },
   { key: 'bridgingObjectTypeCodes', label: 'Allowed Bridging Types', helpTerm: 'bridgingObjectTypeCodes', section: 'Charge Object Settings', controlType: 'list' },
-  { key: 'defaultBridgingObjectId', label: 'Default Bridging Object (ID)', helpTerm: 'defaultBridgingObjectId', section: 'Charge Object Settings', controlType: 'text' },
+  { key: 'defaultBridgingObjectId', label: 'Default Bridging Object', helpTerm: 'defaultBridgingObjectId', section: 'Charge Object Settings', controlType: 'chargeObjectLookup' },
+  { key: 'inboundAllocationSourceIds', label: 'Inbound Allocation Sources', helpTerm: 'inboundAllocationSourceIds', section: 'Charge Object Settings', controlType: 'inboundAllocations' },
   { key: 'fundingSplitAllowed', label: 'Funding Split Allowed', helpTerm: 'fundingSplitAllowed', section: 'Charge Object Settings', controlType: 'toggle' },
   { key: 'fundingSplitMode', label: 'Funding Split Mode', helpTerm: 'fundingSplitMode', section: 'Charge Object Settings', controlType: 'select', selectOptions: [{ value: 'NONE', label: 'None' }, { value: 'DOLLAR', label: 'Dollar' }, { value: 'PERCENT', label: 'Percent' }] },
   { key: 'budgetCheckPoint', label: 'Budget Check Point', helpTerm: 'budgetCheckPoint', section: 'Charge Object Settings', controlType: 'select', selectOptions: [{ value: 'NONE', label: 'None' }, { value: 'REQUISITION', label: 'Requisition' }, { value: 'PO', label: 'PO' }, { value: 'INVOICE', label: 'Invoice' }, { value: 'POSTING', label: 'Posting' }] },

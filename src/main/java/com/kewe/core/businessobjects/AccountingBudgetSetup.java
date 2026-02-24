@@ -56,6 +56,7 @@ public class AccountingBudgetSetup {
     private ConfiguredField<String> allowedSpendCategoriesMode = new ConfiguredField<>();
     private ConfiguredField<List<String>> allowedSpendCategoryIds = new ConfiguredField<>();
     private ConfiguredField<List<String>> deniedSpendCategoryIds = new ConfiguredField<>();
+    private ConfiguredField<List<String>> inboundAllocationSourceIds = new ConfiguredField<>();
 
     public static final Set<String> SUPPORTED_FIELDS = Set.of(
             "allowExpensePosting", "allowRevenuePosting", "allowAssetPosting", "allowLiabilityPosting", "allowBalanceSheetPosting",
@@ -65,7 +66,8 @@ public class AccountingBudgetSetup {
             "investmentManaged", "unitized", "capitalizable", "defaultDepreciationProfile", "chargeObjectEnabled", "directPostAllowed",
             "requiresSpendAuthority", "spendAuthorityRoleKey", "liquidityRequired", "liquiditySourceMode", "bridgingAllowed",
             "bridgingRequired", "bridgingObjectTypeCodes", "defaultBridgingObjectId", "fundingSplitAllowed", "fundingSplitMode",
-            "budgetCheckPoint", "allowedSpendCategoriesMode", "allowedSpendCategoryIds", "deniedSpendCategoryIds");
+            "budgetCheckPoint", "allowedSpendCategoriesMode", "allowedSpendCategoryIds", "deniedSpendCategoryIds",
+            "inboundAllocationSourceIds");
 
     public ConfiguredField<?> getFieldConfig(String fieldName) {
         return asMap().get(fieldName);
@@ -115,7 +117,8 @@ public class AccountingBudgetSetup {
                 Map.entry("budgetCheckPoint", budgetCheckPoint),
                 Map.entry("allowedSpendCategoriesMode", allowedSpendCategoriesMode),
                 Map.entry("allowedSpendCategoryIds", allowedSpendCategoryIds),
-                Map.entry("deniedSpendCategoryIds", deniedSpendCategoryIds)
+                Map.entry("deniedSpendCategoryIds", deniedSpendCategoryIds),
+                Map.entry("inboundAllocationSourceIds", inboundAllocationSourceIds)
         );
     }
 
@@ -205,4 +208,6 @@ public class AccountingBudgetSetup {
     public void setAllowedSpendCategoryIds(ConfiguredField<List<String>> allowedSpendCategoryIds) { this.allowedSpendCategoryIds = allowedSpendCategoryIds; }
     public ConfiguredField<List<String>> getDeniedSpendCategoryIds() { return deniedSpendCategoryIds; }
     public void setDeniedSpendCategoryIds(ConfiguredField<List<String>> deniedSpendCategoryIds) { this.deniedSpendCategoryIds = deniedSpendCategoryIds; }
+    public ConfiguredField<List<String>> getInboundAllocationSourceIds() { return inboundAllocationSourceIds; }
+    public void setInboundAllocationSourceIds(ConfiguredField<List<String>> inboundAllocationSourceIds) { this.inboundAllocationSourceIds = inboundAllocationSourceIds; }
 }
