@@ -124,6 +124,11 @@ export interface BusinessObjectInstance {
   objectKind: string;
   code: string;
   name: string;
+  description?: string;
+  effectiveDate?: string;
+  visibility?: string;
+  hierarchies?: Array<{ hierarchyTypeCode?: string; nodeId?: string; path?: string }>;
+  roles?: Array<{ roleCode?: string; actorObjectId?: string; effectiveDate?: string; endDate?: string; status?: string }>;
   status: string;
   accountingBudgetOverrides: Record<string, BusinessObjectFieldOverride>;
 }

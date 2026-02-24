@@ -190,6 +190,10 @@ export async function fetchBusinessObjectType(code: string) {
   return request<import('./api/types').BusinessObjectType>(`/business-object-types/${code}`);
 }
 
+export async function createBusinessObjectType(payload: unknown) {
+  return request<import('./api/types').BusinessObjectType>('/business-object-types', { method: 'POST', body: toBody(payload) });
+}
+
 export async function updateBusinessObjectType(code: string, payload: unknown) {
   return request<import('./api/types').BusinessObjectType>(`/business-object-types/${code}`, { method: 'PUT', body: toBody(payload) });
 }
