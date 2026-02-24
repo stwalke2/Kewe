@@ -55,7 +55,7 @@ export function BusinessObjectDetailPage() {
     const defaultValue = type.accountingBudgetDefaults?.[field.key]?.defaultValue;
     const nextOverrides = { ...overrides };
     if (enabled) {
-      nextOverrides[field.key] = { value: defaultValue === undefined ? '' : defaultValue };
+      nextOverrides[field.key] = { value: defaultValue === undefined ? (field.controlType === 'list' ? [] : '') : defaultValue };
     } else {
       delete nextOverrides[field.key];
     }
@@ -65,7 +65,7 @@ export function BusinessObjectDetailPage() {
     });
   };
 
-  const updateOverride = (fieldKey: string, patch: { value?: string | boolean; overrideReason?: string }) => {
+  const updateOverride = (fieldKey: string, patch: { value?: string | boolean | string[]; overrideReason?: string }) => {
     const existing = overrides[fieldKey];
     if (!existing) return;
     setObj({
@@ -127,6 +127,20 @@ export function BusinessObjectDetailPage() {
       );
     }
 
+
+    if (field.controlType === 'list') {
+      const listValue = Array.isArray(value) ? value.join(', ') : '';
+      return (
+        <textarea
+          value={listValue}
+          rows={2}
+          disabled={!hasOverride}
+          placeholder='Comma-separated values'
+          onChange={(e) => updateOverride(field.key, { value: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
+        />
+      );
+    }
+
     if (field.controlType === 'select') {
       return (
         <select
@@ -179,7 +193,7 @@ export function BusinessObjectDetailPage() {
             const defaultValue = config?.defaultValue;
             const effectiveValue = override?.value ?? defaultValue;
             const isOverridden = Boolean(override) && String(effectiveValue ?? '') !== String(defaultValue ?? '');
-            const reasonRequired = Boolean(config?.overrideReasonRequired && override && isOverridden);
+            const reasonRequired = Boolean(config?.overrideReasonRequired && override);
 
             return (
               <div className='budget-config-row budget-config-row-instance' key={field.key}>

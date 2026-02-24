@@ -2,6 +2,7 @@ package com.kewe.core.businessobjects;
 
 import java.util.Map;
 import java.util.Set;
+import java.util.List;
 
 public class AccountingBudgetSetup {
 
@@ -39,12 +40,32 @@ public class AccountingBudgetSetup {
     private ConfiguredField<Boolean> capitalizable = new ConfiguredField<>();
     private ConfiguredField<String> defaultDepreciationProfile = new ConfiguredField<>();
 
+    private ConfiguredField<Boolean> chargeObjectEnabled = new ConfiguredField<>();
+    private ConfiguredField<Boolean> directPostAllowed = new ConfiguredField<>();
+    private ConfiguredField<Boolean> requiresSpendAuthority = new ConfiguredField<>();
+    private ConfiguredField<String> spendAuthorityRoleKey = new ConfiguredField<>();
+    private ConfiguredField<Boolean> liquidityRequired = new ConfiguredField<>();
+    private ConfiguredField<String> liquiditySourceMode = new ConfiguredField<>();
+    private ConfiguredField<Boolean> bridgingAllowed = new ConfiguredField<>();
+    private ConfiguredField<Boolean> bridgingRequired = new ConfiguredField<>();
+    private ConfiguredField<List<String>> bridgingObjectTypeCodes = new ConfiguredField<>();
+    private ConfiguredField<String> defaultBridgingObjectId = new ConfiguredField<>();
+    private ConfiguredField<Boolean> fundingSplitAllowed = new ConfiguredField<>();
+    private ConfiguredField<String> fundingSplitMode = new ConfiguredField<>();
+    private ConfiguredField<String> budgetCheckPoint = new ConfiguredField<>();
+    private ConfiguredField<String> allowedSpendCategoriesMode = new ConfiguredField<>();
+    private ConfiguredField<List<String>> allowedSpendCategoryIds = new ConfiguredField<>();
+    private ConfiguredField<List<String>> deniedSpendCategoryIds = new ConfiguredField<>();
+
     public static final Set<String> SUPPORTED_FIELDS = Set.of(
             "allowExpensePosting", "allowRevenuePosting", "allowAssetPosting", "allowLiabilityPosting", "allowBalanceSheetPosting",
             "restrictionType", "netAssetClassMapping", "budgetRequired", "budgetControlLevel", "allowBudgetOverride", "allowCarryforward",
             "budgetYearType", "defaultCompanyId", "defaultFunctionId", "defaultLedgerAccountId", "defaultRestrictionType", "enableEncumbrance",
             "enablePreEncumbrance", "encumbranceReleaseRule", "idcEligible", "sponsorApprovalRequired", "allowCostTransfer", "cashManaged",
-            "investmentManaged", "unitized", "capitalizable", "defaultDepreciationProfile");
+            "investmentManaged", "unitized", "capitalizable", "defaultDepreciationProfile", "chargeObjectEnabled", "directPostAllowed",
+            "requiresSpendAuthority", "spendAuthorityRoleKey", "liquidityRequired", "liquiditySourceMode", "bridgingAllowed",
+            "bridgingRequired", "bridgingObjectTypeCodes", "defaultBridgingObjectId", "fundingSplitAllowed", "fundingSplitMode",
+            "budgetCheckPoint", "allowedSpendCategoriesMode", "allowedSpendCategoryIds", "deniedSpendCategoryIds");
 
     public ConfiguredField<?> getFieldConfig(String fieldName) {
         return asMap().get(fieldName);
@@ -78,7 +99,23 @@ public class AccountingBudgetSetup {
                 Map.entry("investmentManaged", investmentManaged),
                 Map.entry("unitized", unitized),
                 Map.entry("capitalizable", capitalizable),
-                Map.entry("defaultDepreciationProfile", defaultDepreciationProfile)
+                Map.entry("defaultDepreciationProfile", defaultDepreciationProfile),
+                Map.entry("chargeObjectEnabled", chargeObjectEnabled),
+                Map.entry("directPostAllowed", directPostAllowed),
+                Map.entry("requiresSpendAuthority", requiresSpendAuthority),
+                Map.entry("spendAuthorityRoleKey", spendAuthorityRoleKey),
+                Map.entry("liquidityRequired", liquidityRequired),
+                Map.entry("liquiditySourceMode", liquiditySourceMode),
+                Map.entry("bridgingAllowed", bridgingAllowed),
+                Map.entry("bridgingRequired", bridgingRequired),
+                Map.entry("bridgingObjectTypeCodes", bridgingObjectTypeCodes),
+                Map.entry("defaultBridgingObjectId", defaultBridgingObjectId),
+                Map.entry("fundingSplitAllowed", fundingSplitAllowed),
+                Map.entry("fundingSplitMode", fundingSplitMode),
+                Map.entry("budgetCheckPoint", budgetCheckPoint),
+                Map.entry("allowedSpendCategoriesMode", allowedSpendCategoriesMode),
+                Map.entry("allowedSpendCategoryIds", allowedSpendCategoryIds),
+                Map.entry("deniedSpendCategoryIds", deniedSpendCategoryIds)
         );
     }
 
@@ -136,4 +173,36 @@ public class AccountingBudgetSetup {
     public void setCapitalizable(ConfiguredField<Boolean> capitalizable) { this.capitalizable = capitalizable; }
     public ConfiguredField<String> getDefaultDepreciationProfile() { return defaultDepreciationProfile; }
     public void setDefaultDepreciationProfile(ConfiguredField<String> defaultDepreciationProfile) { this.defaultDepreciationProfile = defaultDepreciationProfile; }
+    public ConfiguredField<Boolean> getChargeObjectEnabled() { return chargeObjectEnabled; }
+    public void setChargeObjectEnabled(ConfiguredField<Boolean> chargeObjectEnabled) { this.chargeObjectEnabled = chargeObjectEnabled; }
+    public ConfiguredField<Boolean> getDirectPostAllowed() { return directPostAllowed; }
+    public void setDirectPostAllowed(ConfiguredField<Boolean> directPostAllowed) { this.directPostAllowed = directPostAllowed; }
+    public ConfiguredField<Boolean> getRequiresSpendAuthority() { return requiresSpendAuthority; }
+    public void setRequiresSpendAuthority(ConfiguredField<Boolean> requiresSpendAuthority) { this.requiresSpendAuthority = requiresSpendAuthority; }
+    public ConfiguredField<String> getSpendAuthorityRoleKey() { return spendAuthorityRoleKey; }
+    public void setSpendAuthorityRoleKey(ConfiguredField<String> spendAuthorityRoleKey) { this.spendAuthorityRoleKey = spendAuthorityRoleKey; }
+    public ConfiguredField<Boolean> getLiquidityRequired() { return liquidityRequired; }
+    public void setLiquidityRequired(ConfiguredField<Boolean> liquidityRequired) { this.liquidityRequired = liquidityRequired; }
+    public ConfiguredField<String> getLiquiditySourceMode() { return liquiditySourceMode; }
+    public void setLiquiditySourceMode(ConfiguredField<String> liquiditySourceMode) { this.liquiditySourceMode = liquiditySourceMode; }
+    public ConfiguredField<Boolean> getBridgingAllowed() { return bridgingAllowed; }
+    public void setBridgingAllowed(ConfiguredField<Boolean> bridgingAllowed) { this.bridgingAllowed = bridgingAllowed; }
+    public ConfiguredField<Boolean> getBridgingRequired() { return bridgingRequired; }
+    public void setBridgingRequired(ConfiguredField<Boolean> bridgingRequired) { this.bridgingRequired = bridgingRequired; }
+    public ConfiguredField<List<String>> getBridgingObjectTypeCodes() { return bridgingObjectTypeCodes; }
+    public void setBridgingObjectTypeCodes(ConfiguredField<List<String>> bridgingObjectTypeCodes) { this.bridgingObjectTypeCodes = bridgingObjectTypeCodes; }
+    public ConfiguredField<String> getDefaultBridgingObjectId() { return defaultBridgingObjectId; }
+    public void setDefaultBridgingObjectId(ConfiguredField<String> defaultBridgingObjectId) { this.defaultBridgingObjectId = defaultBridgingObjectId; }
+    public ConfiguredField<Boolean> getFundingSplitAllowed() { return fundingSplitAllowed; }
+    public void setFundingSplitAllowed(ConfiguredField<Boolean> fundingSplitAllowed) { this.fundingSplitAllowed = fundingSplitAllowed; }
+    public ConfiguredField<String> getFundingSplitMode() { return fundingSplitMode; }
+    public void setFundingSplitMode(ConfiguredField<String> fundingSplitMode) { this.fundingSplitMode = fundingSplitMode; }
+    public ConfiguredField<String> getBudgetCheckPoint() { return budgetCheckPoint; }
+    public void setBudgetCheckPoint(ConfiguredField<String> budgetCheckPoint) { this.budgetCheckPoint = budgetCheckPoint; }
+    public ConfiguredField<String> getAllowedSpendCategoriesMode() { return allowedSpendCategoriesMode; }
+    public void setAllowedSpendCategoriesMode(ConfiguredField<String> allowedSpendCategoriesMode) { this.allowedSpendCategoriesMode = allowedSpendCategoriesMode; }
+    public ConfiguredField<List<String>> getAllowedSpendCategoryIds() { return allowedSpendCategoryIds; }
+    public void setAllowedSpendCategoryIds(ConfiguredField<List<String>> allowedSpendCategoryIds) { this.allowedSpendCategoryIds = allowedSpendCategoryIds; }
+    public ConfiguredField<List<String>> getDeniedSpendCategoryIds() { return deniedSpendCategoryIds; }
+    public void setDeniedSpendCategoryIds(ConfiguredField<List<String>> deniedSpendCategoryIds) { this.deniedSpendCategoryIds = deniedSpendCategoryIds; }
 }

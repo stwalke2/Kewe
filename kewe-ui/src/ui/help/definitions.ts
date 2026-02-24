@@ -112,6 +112,71 @@ export const helpDefinitions = {
     label: 'Depreciation Profile',
     definition: 'Defines default depreciation method/life for capital assets associated with this object (placeholder until fixed-asset module exists).',
   },
+
+  chargeObjectEnabled: {
+    label: 'Charge Object Enabled',
+    definition: 'If enabled, this object can be selected as a charge target in spending workflows (requisitions, invoices, journals).',
+  },
+  directPostAllowed: {
+    label: 'Direct Post Allowed',
+    definition: 'If enabled, this object can be charged directly without requiring a separate bridging or funding object.',
+  },
+  requiresSpendAuthority: {
+    label: 'Requires Spend Authority',
+    definition: 'If enabled, Kewe requires an appropriate spend authority role/approval before charging this object.',
+  },
+  spendAuthorityRoleKey: {
+    label: 'Spend Authority Role',
+    definition: 'Specifies the role used to evaluate spend authority for charges to this object (e.g., Cost Center Manager, Fund Steward).',
+  },
+  liquidityRequired: {
+    label: 'Liquidity Required',
+    definition: 'If enabled, Kewe checks that sufficient liquidity is available before allowing charges to this object.',
+  },
+  liquiditySourceMode: {
+    label: 'Liquidity Source',
+    definition: 'Determines where liquidity is evaluated: on this object (Self), via a bridging object (Bridge), externally (External), or not evaluated (None).',
+  },
+  bridgingAllowed: {
+    label: 'Bridging Allowed',
+    definition: 'If enabled, this object may use a bridging object (such as a top-up or funding source) when charging.',
+  },
+  bridgingRequired: {
+    label: 'Bridging Required',
+    definition: 'If enabled, charges to this object must include a bridging object; direct charging is not permitted.',
+  },
+  bridgingObjectTypeCodes: {
+    label: 'Allowed Bridging Types',
+    definition: 'Restricts which business object types are permitted to act as bridging objects for charges.',
+  },
+  defaultBridgingObjectId: {
+    label: 'Default Bridging Object',
+    definition: 'Specifies a default bridging object that Kewe will suggest when charging this object (placeholder until lookup exists).',
+  },
+  fundingSplitAllowed: {
+    label: 'Funding Split Allowed',
+    definition: 'If enabled, a single charge may be split across multiple funding sources.',
+  },
+  fundingSplitMode: {
+    label: 'Funding Split Mode',
+    definition: 'Controls how splits are expressed: by dollar amount or by percentage (or none).',
+  },
+  budgetCheckPoint: {
+    label: 'Budget Check Point',
+    definition: 'Specifies when budget is evaluated for this object in workflows (e.g., at requisition, PO, invoice, or posting).',
+  },
+  allowedSpendCategoriesMode: {
+    label: 'Spend Category Restriction',
+    definition: 'Controls whether all spend categories are allowed, or whether Kewe enforces an allow list or deny list.',
+  },
+  allowedSpendCategoryIds: {
+    label: 'Allowed Spend Categories',
+    definition: 'Specifies which spend categories are permitted for charges to this object (allow list).',
+  },
+  deniedSpendCategoryIds: {
+    label: 'Denied Spend Categories',
+    definition: 'Specifies which spend categories are not permitted for charges to this object (deny list).',
+  },
 } as const;
 
 export type HelpTerm = keyof typeof helpDefinitions;

@@ -100,7 +100,7 @@ export interface ConfiguredField<T> {
 }
 
 export interface AccountingBudgetSetup {
-  [key: string]: ConfiguredField<boolean | string | undefined>;
+  [key: string]: ConfiguredField<boolean | string | string[] | undefined>;
 }
 
 export interface BusinessObjectType {
@@ -114,7 +114,7 @@ export interface BusinessObjectType {
 }
 
 export interface BusinessObjectFieldOverride {
-  value: boolean | string;
+  value: boolean | string | string[];
   overrideReason?: string;
 }
 

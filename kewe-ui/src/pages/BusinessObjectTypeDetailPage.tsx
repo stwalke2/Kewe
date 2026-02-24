@@ -45,11 +45,11 @@ export function BusinessObjectTypeDetailPage() {
 
   if (!model) return <p>Loading…</p>;
 
-  const updateField = (field: AccountingBudgetFieldMeta, patch: Partial<ConfiguredField<boolean | string | undefined>>) => {
+  const updateField = (field: AccountingBudgetFieldMeta, patch: Partial<ConfiguredField<boolean | string | string[] | undefined>>) => {
     const current = model.accountingBudgetDefaults?.[field.key] ?? {
       allowOverride: false,
       overrideReasonRequired: false,
-      defaultValue: field.controlType === 'toggle' ? false : '',
+      defaultValue: field.controlType === 'toggle' ? false : field.controlType === 'list' ? [] : '',
     };
     setModel({
       ...model,
@@ -99,6 +99,19 @@ export function BusinessObjectTypeDetailPage() {
             </option>
           ))}
         </select>
+      );
+    }
+
+
+    if (field.controlType === 'list') {
+      const listValue = Array.isArray(value) ? value.join(', ') : '';
+      return (
+        <textarea
+          value={listValue}
+          rows={2}
+          placeholder='Comma-separated values'
+          onChange={(e) => updateField(field, { defaultValue: e.target.value.split(',').map((item) => item.trim()).filter(Boolean) })}
+        />
       );
     }
 
