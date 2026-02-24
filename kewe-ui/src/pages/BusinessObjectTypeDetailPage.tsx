@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { fetchBusinessObjectType, fetchBusinessObjectTypes, fetchBusinessObjects, fetchDimensionTree, updateBusinessObjectType } from '../api';
 import type { BusinessObjectInstance, BusinessObjectType, ConfiguredField, DimensionNode } from '../api/types';
 import { HelpTip } from '../ui/help/HelpTip';
+import { IconActionButton, ExportIcon, SaveIcon } from '../ui/actions';
+import { downloadSettingsExport } from '../ui/exportSettings';
 import {
   ACCOUNTING_BUDGET_FIELDS,
   ACCOUNTING_BUDGET_SECTIONS,
@@ -80,6 +82,17 @@ export function BusinessObjectTypeDetailPage() {
       },
     });
   };
+
+  const exportRows = ACCOUNTING_BUDGET_FIELDS.map((field) => {
+    const configured = model.accountingBudgetDefaults?.[field.key];
+    return {
+      setting: field.label,
+      section: field.section,
+      defaultValue: String(normalizeValue(configured?.defaultValue, field.controlType === 'inboundAllocations' ? 'list' : field.controlType)),
+      allowOverride: String(Boolean(configured?.allowOverride)),
+      reasonRequired: String(Boolean(configured?.overrideReasonRequired)),
+    };
+  });
 
   const renderControl = (field: AccountingBudgetFieldMeta) => {
     const configured = model.accountingBudgetDefaults?.[field.key];
@@ -210,7 +223,11 @@ export function BusinessObjectTypeDetailPage() {
     <section className='page-section'>
       <div className='page-header-row'>
         <h2>Business Object Type: {model.code}</h2>
-        <button className='btn btn-primary' onClick={() => void updateBusinessObjectType(model.code, model)}>Save</button>
+        <div className='header-actions'>
+          <IconActionButton icon={<ExportIcon />} label='Export CSV' iconOnly onClick={() => downloadSettingsExport(`${model.code}-type-settings`, exportRows, 'csv')} />
+          <IconActionButton icon={<ExportIcon />} label='Export Excel' iconOnly onClick={() => downloadSettingsExport(`${model.code}-type-settings`, exportRows, 'excel')} />
+          <IconActionButton icon={<SaveIcon />} label='Save' variant='primary' onClick={() => void updateBusinessObjectType(model.code, model)} />
+        </div>
       </div>
 
       <div className='segmented-control'>
@@ -275,7 +292,6 @@ export function BusinessObjectTypeDetailPage() {
       )}
 
       {tab === 'roles' && <p>Roles template placeholder.</p>}
-      <button className='btn btn-primary' onClick={() => void updateBusinessObjectType(model.code, model)}>Save</button>
     </section>
   );
 }

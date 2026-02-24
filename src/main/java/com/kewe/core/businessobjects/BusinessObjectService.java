@@ -117,6 +117,7 @@ public class BusinessObjectService {
                                            BusinessObjectInstance object,
                                            Map<String, BusinessObjectFieldOverride> overrides) {
         if (overrides == null || overrides.isEmpty()) {
+            object.setAccountingBudgetOverrides(Map.of());
             return;
         }
         if (!type.isAllowInstanceAccountingBudgetOverride()) {

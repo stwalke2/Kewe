@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchBusinessObjectTypes } from '../api';
 import type { BusinessObjectType } from '../api/types';
+import { IconActionButton, EditIcon } from '../ui/actions';
 
 export function BusinessObjectTypesPage() {
   const [types, setTypes] = useState<BusinessObjectType[]>([]);
@@ -42,9 +43,7 @@ export function BusinessObjectTypesPage() {
                 <td>{typeValue.objectKind}</td>
                 <td>{typeValue.status}</td>
                 <td>
-                  <button className="btn btn-secondary" onClick={() => navigate(`/business-object-types/${typeValue.code}`)}>
-                    View/Edit
-                  </button>
+                  <IconActionButton icon={<EditIcon />} label='Edit' onClick={() => navigate(`/business-object-types/${typeValue.code}`)} />
                 </td>
               </tr>
             ))}
