@@ -3,6 +3,8 @@ import { useParams } from 'react-router-dom';
 import { fetchBusinessObject, fetchBusinessObjectType, fetchBusinessObjectTypes, fetchBusinessObjects, fetchDimensionTree, updateBusinessObjectOverrides } from '../api';
 import type { BusinessObjectInstance, BusinessObjectType, DimensionNode } from '../api/types';
 import { HelpTip } from '../ui/help/HelpTip';
+import { IconActionButton, ExportIcon, SaveIcon } from '../ui/actions';
+import { downloadSettingsExport } from '../ui/exportSettings';
 import {
   ACCOUNTING_BUDGET_FIELDS,
   ACCOUNTING_BUDGET_SECTIONS,
@@ -69,6 +71,28 @@ export function BusinessObjectDetailPage() {
   if (!obj || !type) return <p>Loading…</p>;
 
   const overrides = obj.accountingBudgetOverrides ?? {};
+
+  const saveOverrides = async () => {
+    const payload = Object.fromEntries(Object.entries(obj.accountingBudgetOverrides ?? {}).filter(([, value]) => value));
+    const updated = await updateBusinessObjectOverrides(obj.id, payload);
+    setObj(updated);
+  };
+
+  const exportRows = ACCOUNTING_BUDGET_FIELDS.map((field) => {
+    const config = type.accountingBudgetDefaults?.[field.key];
+    const override = overrides[field.key];
+    const defaultValue = config?.defaultValue;
+    const effective = override?.value ?? defaultValue;
+    return {
+      setting: field.label,
+      section: field.section,
+      defaultValue: formatDisplayValue(defaultValue, field),
+      overrideEnabled: String(Boolean(override)),
+      overrideValue: formatDisplayValue(override?.value, field),
+      effectiveValue: formatDisplayValue(effective, field),
+      reason: override?.overrideReason ?? '',
+    };
+  });
 
   const setOverrideEnabled = (field: AccountingBudgetFieldMeta, enabled: boolean) => {
     const defaultValue = type.accountingBudgetDefaults?.[field.key]?.defaultValue;
@@ -252,7 +276,11 @@ export function BusinessObjectDetailPage() {
     <section className='page-section'>
       <div className='page-header-row'>
         <h2>Business Object Instance: {obj.code}</h2>
-        <button className='btn btn-primary' onClick={() => void updateBusinessObjectOverrides(obj.id, Object.fromEntries(Object.entries(obj.accountingBudgetOverrides ?? {}).filter(([, value]) => value)))}>Save</button>
+        <div className='header-actions'>
+          <IconActionButton icon={<ExportIcon />} label='Export CSV' iconOnly onClick={() => downloadSettingsExport(`${obj.code}-settings`, exportRows, 'csv')} />
+          <IconActionButton icon={<ExportIcon />} label='Export Excel' iconOnly onClick={() => downloadSettingsExport(`${obj.code}-settings`, exportRows, 'excel')} />
+          <IconActionButton icon={<SaveIcon />} label='Save' variant='primary' onClick={() => void saveOverrides()} />
+        </div>
       </div>
 
       <div className='callout-panel'>
@@ -306,8 +334,6 @@ export function BusinessObjectDetailPage() {
           })}
         </details>
       ))}
-
-      <button className='btn btn-primary' onClick={() => void updateBusinessObjectOverrides(obj.id, Object.fromEntries(Object.entries(obj.accountingBudgetOverrides ?? {}).filter(([, value]) => value)))}>Save</button>
     </section>
   );
 }

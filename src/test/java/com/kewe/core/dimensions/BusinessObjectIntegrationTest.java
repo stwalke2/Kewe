@@ -113,6 +113,17 @@ class BusinessObjectIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountingBudgetOverrides.allowExpensePosting.value").value(false));
 
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId + "/accounting-budget-override")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "overrides": {}
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accountingBudgetOverrides").isMap())
+                .andExpect(jsonPath("$.accountingBudgetOverrides.allowExpensePosting").doesNotExist());
+
         mockMvc.perform(get("/api/business-object-types/FUND"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountingBudgetDefaults.allowExpensePosting.defaultValue").value(true));
