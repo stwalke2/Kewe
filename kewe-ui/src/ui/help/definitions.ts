@@ -31,21 +31,54 @@ export const helpDefinitions = {
     label: 'Pre-Encumbrance',
     definition: 'If enabled, Kewe reserves budget earlier in the process (often at requisition) before a formal PO or obligation is created.',
   },
+
+  budgetYearType: {
+    label: 'Budget Year Type',
+    definition: 'Defines the budget period used by this object, such as fiscal year, grant period, or project period.',
+  },
   defaultLedgerAccountId: {
     label: 'Default Ledger Account',
     definition: 'The natural account Kewe will default when this object is used, unless overridden or derived by rules.',
+  },
+
+  defaultCompanyId: {
+    label: 'Default Company',
+    definition: 'The default company/legal entity applied when this object is used, unless overridden by downstream derivation rules.',
   },
   defaultFunctionId: {
     label: 'Default Function',
     definition: 'The default functional classification (e.g., NACUBO) applied when this object is used.',
   },
+
+  allowAssetPosting: {
+    label: 'Allow Asset Posting',
+    definition: 'If enabled, this object can be used on asset-side entries and defaulted on transactions that create or adjust assets.',
+  },
+  allowLiabilityPosting: {
+    label: 'Allow Liability Posting',
+    definition: 'If enabled, this object can be used on liability-side entries for obligations, accruals, and settlement events.',
+  },
+  allowBalanceSheetPosting: {
+    label: 'Allow Balance Sheet Posting',
+    definition: 'If enabled, this object can post to balance sheet accounts where policy allows balance-sheet activity.',
+  },
   restrictionType: {
     label: 'Restriction Type',
     definition: 'Indicates whether funds are unrestricted, donor restricted, or agency/held for others; used for reporting and posting rules.',
   },
+
+  defaultRestrictionType: {
+    label: 'Default Restriction Type',
+    definition: 'Pre-populates a restriction type for downstream postings and reporting when this object is selected.',
+  },
   netAssetClassMapping: {
     label: 'Net Asset Class Mapping',
     definition: 'Maps activity to the appropriate net asset classification for financial reporting.',
+  },
+
+  encumbranceReleaseRule: {
+    label: 'Encumbrance Release Rule',
+    definition: 'Controls when encumbrances are released or relieved (for example at PO close, invoice post, or by manual action).',
   },
   idcEligible: {
     label: 'IDC Eligible',
