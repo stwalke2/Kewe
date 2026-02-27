@@ -10,6 +10,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -58,7 +59,9 @@ public class BusinessObjectService {
         type.setAllowInstanceAccountingBudgetOverride(Boolean.TRUE.equals(request.getAllowInstanceAccountingBudgetOverride()));
         type.setAccountingBudgetDefaults(request.getAccountingBudgetDefaults());
         touchUpdate(type);
-        return typeRepository.save(type);
+        BusinessObjectType saved = typeRepository.save(type);
+        pushDownTypeChanges(saved);
+        return saved;
     }
 
     public BusinessObjectType updateTypeDefaults(String code, AccountingBudgetDefaultsRequest request) {
@@ -105,6 +108,26 @@ public class BusinessObjectService {
         }
     }
 
+    public BusinessObjectInstance updateObject(String id, BusinessObjectRequest request) {
+        BusinessObjectInstance object = getObjectById(id);
+        if (StringUtils.hasText(request.getTypeCode()) && !object.getTypeCode().equals(normalizeCode(request.getTypeCode()))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Changing typeCode is not supported");
+        }
+        object.setCode(normalizeCode(request.getCode()));
+        object.setName(request.getName().trim());
+        object.setDescription(request.getDescription());
+        object.setEffectiveDate(request.getEffectiveDate());
+        object.setVisibility(request.getVisibility());
+        object.setHierarchies(request.getHierarchies());
+        object.setRoles(request.getRoles());
+        touchUpdate(object);
+        try {
+            return objectRepository.save(object);
+        } catch (DuplicateKeyException ex) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Business object code already exists for this type");
+        }
+    }
+
     public BusinessObjectInstance overrideInstanceAccountingBudget(String id, Map<String, BusinessObjectFieldOverride> overrides) {
         BusinessObjectInstance object = getObjectById(id);
         BusinessObjectType type = getType(object.getTypeCode());
@@ -137,6 +160,40 @@ public class BusinessObjectService {
             }
         });
         object.setAccountingBudgetOverrides(overrides);
+    }
+
+    private void pushDownTypeChanges(BusinessObjectType type) {
+        List<BusinessObjectInstance> objects = objectRepository.findByTypeCode(type.getCode());
+        if (objects.isEmpty()) {
+            return;
+        }
+        List<BusinessObjectInstance> updated = new ArrayList<>(objects.size());
+        for (BusinessObjectInstance object : objects) {
+            object.setObjectKind(type.getObjectKind());
+            object.setAccountingBudgetOverrides(pruneInvalidOverrides(type, object.getAccountingBudgetOverrides()));
+            touchUpdate(object);
+            updated.add(object);
+        }
+        objectRepository.saveAll(updated);
+    }
+
+    private Map<String, BusinessObjectFieldOverride> pruneInvalidOverrides(BusinessObjectType type,
+                                                                            Map<String, BusinessObjectFieldOverride> overrides) {
+        if (overrides == null || overrides.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, BusinessObjectFieldOverride> cleaned = new java.util.HashMap<>();
+        overrides.forEach((field, value) -> {
+            ConfiguredField<?> config = type.getAccountingBudgetDefaults().getFieldConfig(field);
+            if (config == null || !config.isAllowOverride()) {
+                return;
+            }
+            if (config.isOverrideReasonRequired() && (value == null || !StringUtils.hasText(value.getOverrideReason()))) {
+                return;
+            }
+            cleaned.put(field, value);
+        });
+        return cleaned;
     }
 
     private BusinessObjectType getType(String code) {

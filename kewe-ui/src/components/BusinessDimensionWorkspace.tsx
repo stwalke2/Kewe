@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 type PrimaryTab = 'dimension' | 'settings' | 'roles' | 'security' | 'history';
 type SettingsTab = 'general' | 'defaults-allowable' | 'charging' | 'visibility';
@@ -11,13 +11,14 @@ interface BusinessDimensionWorkspaceProps {
   effectiveDate?: string;
   includedHierarchies?: string[];
   isType: boolean;
+  onSave?: (draft: { definition?: string; code: string; name: string; includedHierarchies?: string[] }) => Promise<void>;
 }
 
 function formatDate(value?: string): string {
-  if (!value) return '—';
+  if (!value) return '';
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString();
+  return date.toISOString().slice(0, 10);
 }
 
 export function BusinessDimensionWorkspace({
@@ -28,9 +29,31 @@ export function BusinessDimensionWorkspace({
   effectiveDate,
   includedHierarchies,
   isType,
+  onSave,
 }: BusinessDimensionWorkspaceProps) {
   const [tab, setTab] = useState<PrimaryTab>('dimension');
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [draft, setDraft] = useState({
+    definition: definition ?? '',
+    code,
+    name,
+    effectiveDate: formatDate(effectiveDate),
+    includedHierarchies: (includedHierarchies ?? []).join(', '),
+  });
+
+  useEffect(() => {
+    setDraft({
+      definition: definition ?? '',
+      code,
+      name,
+      effectiveDate: formatDate(effectiveDate),
+      includedHierarchies: (includedHierarchies ?? []).join(', '),
+    });
+    setEditMode(false);
+  }, [code, definition, effectiveDate, includedHierarchies, name]);
 
   const hierarchyLabel = useMemo(() => {
     if (!includedHierarchies || includedHierarchies.length === 0) {
@@ -38,6 +61,26 @@ export function BusinessDimensionWorkspace({
     }
     return includedHierarchies.join(', ');
   }, [includedHierarchies]);
+
+  const handleSave = async () => {
+    if (!onSave) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      await onSave({
+        definition: draft.definition || undefined,
+        code: draft.code,
+        name: draft.name,
+        includedHierarchies: draft.includedHierarchies.split(',').map((value) => value.trim()).filter(Boolean),
+      });
+      setEditMode(false);
+      setMessage('Saved successfully.');
+    } catch {
+      setMessage('Unable to save changes.');
+    } finally {
+      setSaving(false);
+    }
+  };
 
   return (
     <section className="page-section">
@@ -61,30 +104,46 @@ export function BusinessDimensionWorkspace({
         </div>
 
         {tab === 'dimension' && (
-          <div className="form-grid dimension-home-grid">
-            <label>
-              Definition
-              <input value={definition ?? ''} readOnly placeholder="No definition provided." />
-            </label>
-            <label>
-              Code
-              <input value={code} readOnly />
-            </label>
-            <label>
-              Name
-              <input value={name} readOnly />
-            </label>
-            <label>
-              Effective Date
-              <input value={formatDate(effectiveDate)} readOnly />
-            </label>
-            {!isType && (
-              <label className="dimension-home-full-width">
-                Included in Hierarchies
-                <input value={hierarchyLabel} readOnly />
+          <>
+            <div className="form-grid dimension-home-grid">
+              <label>
+                Definition
+                <input value={draft.definition} readOnly={!editMode} onChange={(event) => setDraft({ ...draft, definition: event.target.value })} placeholder="No definition provided." />
               </label>
+              <label>
+                Code
+                <input value={draft.code} readOnly />
+              </label>
+              <label>
+                Name
+                <input value={draft.name} readOnly={!editMode} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />
+              </label>
+              <label>
+                Effective Date
+                <input value={draft.effectiveDate} readOnly />
+              </label>
+              {!isType && (
+                <label className="dimension-home-full-width">
+                  Included in Hierarchies
+                  <input
+                    value={editMode ? draft.includedHierarchies : hierarchyLabel}
+                    readOnly={!editMode}
+                    onChange={(event) => setDraft({ ...draft, includedHierarchies: event.target.value })}
+                  />
+                </label>
+              )}
+            </div>
+            {onSave && (
+              <div className="actions-row">
+                {!editMode && <button className="btn btn-primary" onClick={() => setEditMode(true)}>Edit</button>}
+                {editMode && <>
+                  <button className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>{saving ? 'Saving…' : 'Save'}</button>
+                  <button className="btn btn-secondary" disabled={saving} onClick={() => setEditMode(false)}>Cancel</button>
+                </>}
+              </div>
             )}
-          </div>
+            {message && <p className="message success">{message}</p>}
+          </>
         )}
 
         {tab === 'settings' && (
