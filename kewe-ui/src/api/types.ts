@@ -104,6 +104,8 @@ export interface AccountingBudgetSetup {
 }
 
 export interface BusinessObjectType {
+  createdAt?: string;
+  updatedAt?: string;
   id: string;
   code: string;
   name: string;
@@ -119,6 +121,8 @@ export interface BusinessObjectFieldOverride {
 }
 
 export interface BusinessObjectInstance {
+  createdAt?: string;
+  updatedAt?: string;
   id: string;
   typeCode: string;
   objectKind: string;

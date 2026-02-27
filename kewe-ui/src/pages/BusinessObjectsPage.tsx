@@ -1,74 +1,67 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchBusinessObjectTypes, fetchBusinessObjects } from '../api';
 import type { BusinessObjectInstance, BusinessObjectType } from '../api/types';
+import { IconActionButton, EditIcon } from '../ui/actions';
 
 export function BusinessObjectsPage() {
-  const [typeCode, setTypeCode] = useState('');
-  const [types, setTypes] = useState<BusinessObjectType[]>([]);
   const [objects, setObjects] = useState<BusinessObjectInstance[]>([]);
+  const [types, setTypes] = useState<BusinessObjectType[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
-    void fetchBusinessObjectTypes().then(setTypes);
+    void Promise.all([fetchBusinessObjects(), fetchBusinessObjectTypes()]).then(([objectValues, typeValues]) => {
+      setObjects(objectValues);
+      setTypes(typeValues);
+    });
   }, []);
 
-  useEffect(() => {
-    void fetchBusinessObjects(typeCode || undefined).then(setObjects);
-  }, [typeCode]);
-
-  if (types.length === 0) {
-    return (
-      <section className="page-section">
-        <h2>Business Objects</h2>
-        <div className="card empty-state">
-          <p>Create a Business Object Type first.</p>
-          <button className="btn btn-primary" onClick={() => navigate('/business-object-types')}>
-            Go to Business Object Types
-          </button>
-        </div>
-      </section>
-    );
-  }
+  const typeByCode = useMemo(() => new Map(types.map((value) => [value.code, value.name])), [types]);
 
   return (
     <section className="page-section">
       <div className="page-header-row">
-        <h2>Business Objects</h2>
+        <div>
+          <h2>Business Dimensions</h2>
+          <p>Create and manage your Business Dimensions from seeded type defaults.</p>
+        </div>
         <button className="btn btn-primary" onClick={() => navigate('/business-objects/new')}>
-          New Object
+          New Business Dimension
         </button>
       </div>
 
-      <label>
-        Filter by type
-        <select value={typeCode} onChange={(event) => setTypeCode(event.target.value)}>
-          <option value="">All</option>
-          {types.map((typeValue) => (
-            <option key={typeValue.code} value={typeValue.code}>{typeValue.name}</option>
-          ))}
-        </select>
-      </label>
-
       <div className="card table-card">
-        <table className="clickable-rows">
+        <table>
           <thead>
             <tr>
               <th>Code</th>
               <th>Name</th>
-              <th>Type</th>
+              <th>Dimension Type</th>
               <th>Status</th>
+              <th>Actions</th>
             </tr>
           </thead>
           <tbody>
             {objects.map((objectValue) => (
-              <tr key={objectValue.id} onClick={() => navigate(`/business-objects/${objectValue.id}`)}>
+              <tr key={objectValue.id}>
                 <td>{objectValue.code}</td>
                 <td>{objectValue.name}</td>
-                <td>{objectValue.typeCode}</td>
+                <td>{typeByCode.get(objectValue.typeCode) ?? objectValue.typeCode}</td>
                 <td>{objectValue.status}</td>
+                <td>
+                  <IconActionButton icon={<EditIcon />} label="Edit" onClick={() => navigate(`/business-objects/${objectValue.id}`)} />
+                </td>
               </tr>
             ))}
+            {objects.length === 0 && (
+              <tr>
+                <td colSpan={5}>
+                  <div className="empty-state">
+                    <p>No Business Dimensions yet.</p>
+                  </div>
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
