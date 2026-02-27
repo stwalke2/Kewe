@@ -8,6 +8,7 @@ import { BusinessObjectTypeCreatePage } from './pages/BusinessObjectTypeCreatePa
 import { BusinessObjectsPage } from './pages/BusinessObjectsPage';
 import { BusinessObjectDetailPage } from './pages/BusinessObjectDetailPage';
 import { BusinessObjectCreatePage } from './pages/BusinessObjectCreatePage';
+import { BudgetsPage } from './pages/BudgetsPage';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
         <Route path="/business-objects" element={<BusinessObjectsPage />} />
         <Route path="/business-objects/new" element={<BusinessObjectCreatePage />} />
         <Route path="/business-objects/:id" element={<BusinessObjectDetailPage />} />
+        <Route path="/budgets" element={<BudgetsPage />} />
         <Route path="*" element={<Navigate to="/supplier-invoices" replace />} />
       </Routes>
     </Layout>
