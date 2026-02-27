@@ -16,11 +16,11 @@ export function BusinessObjectTypesPage() {
     <section className="page-section">
       <div className="page-header-row">
         <div>
-          <h2>Business Object Types</h2>
-          <p>Define reusable templates for institutional business objects.</p>
+          <h2>Business Dimension Types</h2>
+          <p>Define default templates that Business Dimensions inherit from.</p>
         </div>
         <button className="btn btn-primary" onClick={() => navigate('/business-object-types/new')}>
-          New Type
+          New Business Dimension Type
         </button>
       </div>
 
@@ -30,7 +30,6 @@ export function BusinessObjectTypesPage() {
             <tr>
               <th>Code</th>
               <th>Name</th>
-              <th>Category</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
@@ -40,21 +39,17 @@ export function BusinessObjectTypesPage() {
               <tr key={typeValue.id}>
                 <td>{typeValue.code}</td>
                 <td>{typeValue.name}</td>
-                <td>{typeValue.objectKind}</td>
                 <td>{typeValue.status}</td>
                 <td>
-                  <IconActionButton icon={<EditIcon />} label='Edit' onClick={() => navigate(`/business-object-types/${typeValue.code}`)} />
+                  <IconActionButton icon={<EditIcon />} label="Edit" onClick={() => navigate(`/business-object-types/${typeValue.code}`)} />
                 </td>
               </tr>
             ))}
             {types.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={4}>
                   <div className="empty-state">
-                    <p>No Business Object Types yet.</p>
-                    <button className="btn btn-primary" onClick={() => navigate('/business-object-types/new')}>
-                      Create your first Type
-                    </button>
+                    <p>No Business Dimension Types yet.</p>
                   </div>
                 </td>
               </tr>

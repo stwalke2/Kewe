@@ -710,3 +710,19 @@ th:hover { background: #f3f6fb; color: #475467; }
   padding: 0;
   justify-content: center;
 }
+
+.dimension-home-grid {
+  margin-top: 1rem;
+}
+
+.dimension-home-full-width {
+  grid-column: 1 / -1;
+}
+
+.settings-panel-placeholder {
+  margin-top: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem;
+  background: #fafbfd;
+}

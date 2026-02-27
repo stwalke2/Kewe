@@ -55,12 +55,12 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
     subtitle: 'Manage invoice lifecycle, approvals, and posting in one place.',
   },
   '/business-object-types': {
-    title: 'Business Object Types',
-    subtitle: 'Configure template defaults and accounting/budget behavior.',
+    title: 'Business Dimension Types',
+    subtitle: 'Configure default templates for Business Dimensions.',
   },
   '/business-objects': {
-    title: 'Business Objects',
-    subtitle: 'Manage instance-level data and allowed accounting/budget overrides.',
+    title: 'Business Dimensions',
+    subtitle: 'Manage Business Dimensions, hierarchy membership, and inherited defaults.',
   },
 };
 
@@ -73,9 +73,9 @@ export function Layout({ children }: PropsWithChildren) {
   const meta = isInvoiceDetail
     ? { title: 'Invoice Detail', subtitle: 'Review invoice details, lines, and workflow actions.' }
     : isTypeDetail
-      ? { title: 'Business Object Type Detail', subtitle: 'Manage default templates for accounting and budget behavior.' }
+      ? { title: 'Business Dimension Type Detail', subtitle: 'Review the Business Dimension Type home and setup tabs.' }
       : isObjectDetail
-        ? { title: 'Business Object Detail', subtitle: 'Manage instance setup and accounting/budget overrides.' }
+        ? { title: 'Business Dimension Detail', subtitle: 'Review Business Dimension home and setup tabs.' }
         : pageMeta[location.pathname] ?? pageMeta['/supplier-invoices'];
 
   return (
@@ -117,14 +117,14 @@ export function Layout({ children }: PropsWithChildren) {
               className={({ isActive }) => (isActive || isTypeDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><DimensionsIcon /></span>
-              <span className="nav-label">Business Object Types</span>
+              <span className="nav-label">Business Dimension Types</span>
             </NavLink>
             <NavLink
               to="/business-objects"
               className={({ isActive }) => (isActive || isObjectDetail ? 'nav-link active' : 'nav-link')}
             >
               <span className="nav-icon"><DimensionsIcon /></span>
-              <span className="nav-label">Business Objects</span>
+              <span className="nav-label">Business Dimensions</span>
             </NavLink>
           </nav>
         </div>
