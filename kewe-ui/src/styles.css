@@ -726,3 +726,58 @@ th:hover { background: #f3f6fb; color: #475467; }
   padding: 1rem;
   background: #fafbfd;
 }
+
+.budgets-table {
+  min-width: 900px;
+}
+
+.expand-col {
+  width: 2.4rem;
+  text-align: center;
+}
+
+.expand-btn {
+  border: 1px solid #d0d7e2;
+  background: #fff;
+  color: #344054;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 8px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.88rem;
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.nested-cell {
+  background: #f9fbff;
+  padding: 0.85rem 0.85rem 1rem;
+}
+
+.nested-header {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #475467;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.55rem;
+  text-transform: uppercase;
+}
+
+.nested-table-wrap {
+  border: 1px solid #e3e8f1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.nested-table {
+  border: 0;
+  border-radius: 0;
+}

@@ -62,6 +62,10 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
     title: 'Business Dimensions',
     subtitle: 'Manage Business Dimensions, hierarchy membership, and inherited defaults.',
   },
+  '/budgets': {
+    title: 'Budgets & Allocations',
+    subtitle: 'Set Business Dimension budgets and manage nested allocations.',
+  },
 };
 
 export function Layout({ children }: PropsWithChildren) {
@@ -70,6 +74,7 @@ export function Layout({ children }: PropsWithChildren) {
   const isInvoiceDetail = location.pathname.startsWith('/supplier-invoices/');
   const isTypeDetail = location.pathname.startsWith('/business-object-types/');
   const isObjectDetail = location.pathname.startsWith('/business-objects/');
+  const isBudgetsPage = location.pathname === '/budgets';
   const meta = isInvoiceDetail
     ? { title: 'Invoice Detail', subtitle: 'Review invoice details, lines, and workflow actions.' }
     : isTypeDetail
@@ -125,6 +130,13 @@ export function Layout({ children }: PropsWithChildren) {
             >
               <span className="nav-icon"><DimensionsIcon /></span>
               <span className="nav-label">Business Dimensions</span>
+            </NavLink>
+            <NavLink
+              to="/budgets"
+              className={({ isActive }) => (isActive || isBudgetsPage ? 'nav-link active' : 'nav-link')}
+            >
+              <span className="nav-icon"><DimensionsIcon /></span>
+              <span className="nav-label">Budgets</span>
             </NavLink>
           </nav>
         </div>
