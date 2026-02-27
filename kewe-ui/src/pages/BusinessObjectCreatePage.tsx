@@ -35,7 +35,7 @@ export function BusinessObjectCreatePage() {
         .split(',')
         .map((value) => value.trim())
         .filter(Boolean)
-        .map((value) => ({ hierarchyTypeCode: 'MANUAL', path: value }));
+        .map((value) => ({ hierarchyCode: value }));
 
       const created = await createBusinessObject({
         typeCode: form.typeCode,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { fetchBusinessObjectType } from '../api';
+import { fetchBusinessObjectType, updateBusinessObjectType } from '../api';
 import type { BusinessObjectType } from '../api/types';
 import { BusinessDimensionWorkspace } from '../components/BusinessDimensionWorkspace';
 
@@ -23,6 +23,17 @@ export function BusinessObjectTypeDetailPage() {
         code={model.code}
         name={model.name}
         effectiveDate={model.createdAt}
+        onSave={async (draft) => {
+          const updated = await updateBusinessObjectType(model.code, {
+            code: model.code,
+            name: draft.name,
+            objectKind: model.objectKind,
+            description: draft.definition,
+            allowInstanceAccountingBudgetOverride: model.allowInstanceAccountingBudgetOverride ?? false,
+            accountingBudgetDefaults: model.accountingBudgetDefaults,
+          });
+          setModel(updated);
+        }}
         isType
       />
     </section>

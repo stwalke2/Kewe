@@ -112,7 +112,13 @@ export interface BusinessObjectType {
   objectKind: string;
   status: string;
   description?: string;
+  allowInstanceAccountingBudgetOverride?: boolean;
   accountingBudgetDefaults: AccountingBudgetSetup;
+}
+
+export interface HierarchyAssignment {
+  hierarchyCode: string;
+  parentObjectId?: string;
 }
 
 export interface BusinessObjectFieldOverride {
@@ -131,7 +137,7 @@ export interface BusinessObjectInstance {
   description?: string;
   effectiveDate?: string;
   visibility?: string;
-  hierarchies?: Array<{ hierarchyTypeCode?: string; nodeId?: string; path?: string }>;
+  hierarchies?: HierarchyAssignment[];
   roles?: Array<{ roleCode?: string; actorObjectId?: string; effectiveDate?: string; endDate?: string; status?: string }>;
   status: string;
   accountingBudgetOverrides: Record<string, BusinessObjectFieldOverride>;

@@ -210,6 +210,10 @@ export async function createBusinessObject(payload: unknown) {
   return request<import('./api/types').BusinessObjectInstance>('/business-object-types/objects', { method: 'POST', body: toBody(payload) });
 }
 
+export async function updateBusinessObject(id: string, payload: unknown) {
+  return request<import('./api/types').BusinessObjectInstance>(`/business-object-types/objects/${id}`, { method: 'PUT', body: toBody(payload) });
+}
+
 export async function updateBusinessObjectOverrides(id: string, overrides: unknown) {
   return request<import('./api/types').BusinessObjectInstance>(`/business-object-types/objects/${id}/accounting-budget-override`, { method: 'PUT', body: toBody({ overrides }) });
 }

@@ -210,4 +210,65 @@ class BusinessObjectIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accountingBudgetOverrides.liquiditySourceMode.value").value("BRIDGE"));
     }
+
+    @Test
+    void shouldUpdateBusinessObjectAndPushDownTypeChanges() throws Exception {
+        mockMvc.perform(post("/api/business-object-types")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "DEPT",
+                                  "name": "Department",
+                                  "objectKind": "OrgUnit"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+
+        String created = mockMvc.perform(post("/api/business-object-types/objects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "DEPT",
+                                  "code": "D100",
+                                  "name": "Arts"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn().getResponse().getContentAsString();
+
+        String objectId = objectMapper.readTree(created).get("id").asText();
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "DEPT",
+                                  "code": "D100",
+                                  "name": "Arts and Letters",
+                                  "description": "Updated",
+                                  "hierarchies": [
+                                    {"hierarchyCode": "ACADEMIC"},
+                                    {"hierarchyCode": "BUDGET"}
+                                  ]
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Arts and Letters"))
+                .andExpect(jsonPath("$.hierarchies[0].hierarchyCode").value("ACADEMIC"));
+
+        mockMvc.perform(put("/api/business-object-types/DEPT")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "DEPT",
+                                  "name": "Department",
+                                  "objectKind": "Business Dimension"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/api/business-object-types/objects/" + objectId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.objectKind").value("Business Dimension"));
+    }
 }

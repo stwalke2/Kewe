@@ -55,6 +55,12 @@ public class BusinessObjectController {
         return service.createObject(request);
     }
 
+    @PutMapping("/objects/{id}")
+    public BusinessObjectInstance updateObject(@PathVariable String id,
+                                               @Valid @RequestBody BusinessObjectRequest request) {
+        return service.updateObject(id, request);
+    }
+
     @PutMapping("/objects/{id}/accounting-budget-override")
     public BusinessObjectInstance overrideAccountingBudget(@PathVariable String id,
                                                            @Valid @RequestBody AccountingBudgetOverrideRequest request) {
