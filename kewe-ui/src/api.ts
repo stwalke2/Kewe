@@ -217,3 +217,30 @@ export async function updateBusinessObject(id: string, payload: unknown) {
 export async function updateBusinessObjectOverrides(id: string, overrides: unknown) {
   return request<import('./api/types').BusinessObjectInstance>(`/business-object-types/objects/${id}/accounting-budget-override`, { method: 'PUT', body: toBody({ overrides }) });
 }
+
+
+export async function createRequisitionDraft() {
+  return request<import('./api/types').RequisitionDraft>('/requisitions/drafts', { method: 'POST' });
+}
+
+export async function fetchRequisitionDraft(id: string) {
+  return request<import('./api/types').RequisitionDraft>(`/requisitions/drafts/${id}`);
+}
+
+export async function updateRequisitionDraft(id: string, payload: import('./api/types').RequisitionDraft) {
+  return request<import('./api/types').RequisitionDraft>(`/requisitions/drafts/${id}`, { method: 'PUT', body: toBody(payload) });
+}
+
+export async function agentDraftRequisition(prompt: string) {
+  return request<import('./api/types').AgentDraftResponse>('/agent/requisition-draft', { method: 'POST', body: toBody({ prompt }) });
+}
+
+export async function fetchChargingLocations(budgetPlanId?: string) {
+  return request<import('./api/types').ChargingLocation[]>(`/charging-locations${budgetPlanId ? `?budgetPlanId=${encodeURIComponent(budgetPlanId)}` : ''}`);
+}
+
+export async function fetchFundingSnapshot(chargingDimensionId: string, budgetPlanId: string | undefined, requisitionTotal: number) {
+  const query = new URLSearchParams({ chargingDimensionId, requisitionTotal: String(requisitionTotal) });
+  if (budgetPlanId) query.set('budgetPlanId', budgetPlanId);
+  return request<import('./api/types').FundingSnapshot>(`/funding-snapshot?${query.toString()}`);
+}
