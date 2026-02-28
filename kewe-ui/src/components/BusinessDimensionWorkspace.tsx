@@ -11,7 +11,18 @@ interface BusinessDimensionWorkspaceProps {
   effectiveDate?: string;
   includedHierarchies?: string[];
   isType: boolean;
-  onSave?: (draft: { definition?: string; code: string; name: string; includedHierarchies?: string[] }) => Promise<void>;
+  requiredOnFinancialTransactions?: boolean;
+  requiredBalancing?: boolean;
+  budgetControlEnabled?: boolean;
+  onSave?: (draft: {
+    definition?: string;
+    code: string;
+    name: string;
+    includedHierarchies?: string[];
+    requiredOnFinancialTransactions: boolean;
+    requiredBalancing: boolean;
+    budgetControlEnabled: boolean;
+  }) => Promise<void>;
 }
 
 function formatDate(value?: string): string {
@@ -30,6 +41,9 @@ export function BusinessDimensionWorkspace({
   includedHierarchies,
   isType,
   onSave,
+  requiredOnFinancialTransactions = false,
+  requiredBalancing = false,
+  budgetControlEnabled = false,
 }: BusinessDimensionWorkspaceProps) {
   const [tab, setTab] = useState<PrimaryTab>('dimension');
   const [settingsTab, setSettingsTab] = useState<SettingsTab>('general');
@@ -42,6 +56,9 @@ export function BusinessDimensionWorkspace({
     name,
     effectiveDate: formatDate(effectiveDate),
     includedHierarchies: (includedHierarchies ?? []).join(', '),
+    requiredOnFinancialTransactions,
+    requiredBalancing,
+    budgetControlEnabled,
   });
 
   useEffect(() => {
@@ -51,9 +68,12 @@ export function BusinessDimensionWorkspace({
       name,
       effectiveDate: formatDate(effectiveDate),
       includedHierarchies: (includedHierarchies ?? []).join(', '),
+      requiredOnFinancialTransactions,
+      requiredBalancing,
+      budgetControlEnabled,
     });
     setEditMode(false);
-  }, [code, definition, effectiveDate, includedHierarchies, name]);
+  }, [budgetControlEnabled, code, definition, effectiveDate, includedHierarchies, name, requiredBalancing, requiredOnFinancialTransactions]);
 
   const hierarchyLabel = useMemo(() => {
     if (!includedHierarchies || includedHierarchies.length === 0) {
@@ -72,6 +92,9 @@ export function BusinessDimensionWorkspace({
         code: draft.code,
         name: draft.name,
         includedHierarchies: draft.includedHierarchies.split(',').map((value) => value.trim()).filter(Boolean),
+        requiredOnFinancialTransactions: draft.requiredOnFinancialTransactions,
+        requiredBalancing: draft.requiredBalancing,
+        budgetControlEnabled: draft.budgetControlEnabled,
       });
       setEditMode(false);
       setMessage('Saved successfully.');
@@ -166,7 +189,40 @@ export function BusinessDimensionWorkspace({
                 Visibility
               </button>
             </div>
-            <p className="subtle">{settingsTab.replace('-', ' ')} options will be added in a later step.</p>
+            {settingsTab === 'general' && (
+              <div className="form-grid">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={draft.requiredOnFinancialTransactions}
+                    onChange={(event) => setDraft({ ...draft, requiredOnFinancialTransactions: event.target.checked })}
+                  />
+                  Required on financial transactions
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={draft.requiredBalancing}
+                    onChange={(event) => setDraft({ ...draft, requiredBalancing: event.target.checked })}
+                  />
+                  Required balancing
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={draft.budgetControlEnabled}
+                    onChange={(event) => setDraft({ ...draft, budgetControlEnabled: event.target.checked })}
+                  />
+                  Budget control enabled
+                </label>
+              </div>
+            )}
+            {settingsTab !== 'general' && <p className="subtle">{settingsTab.replace('-', ' ')} options will be added in a later step.</p>}
+            {onSave && settingsTab === 'general' && (
+              <div className="actions-row">
+                <button className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>{saving ? 'Saving…' : 'Save'}</button>
+              </div>
+            )}
           </div>
         )}
 

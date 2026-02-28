@@ -35,6 +35,9 @@ public class BusinessObjectService {
         type.setName(request.getName().trim());
         type.setDescription(request.getDescription());
         type.setObjectKind(request.getObjectKind().trim());
+        type.setRequiredOnFinancialTransactions(Boolean.TRUE.equals(request.getRequiredOnFinancialTransactions()));
+        type.setRequiredBalancing(Boolean.TRUE.equals(request.getRequiredBalancing()));
+        type.setBudgetControlEnabled(Boolean.TRUE.equals(request.getBudgetControlEnabled()));
         type.setAllowInstanceAccountingBudgetOverride(Boolean.TRUE.equals(request.getAllowInstanceAccountingBudgetOverride()));
         if (request.getAccountingBudgetDefaults() != null) {
             type.setAccountingBudgetDefaults(request.getAccountingBudgetDefaults());
@@ -56,6 +59,9 @@ public class BusinessObjectService {
         type.setName(request.getName().trim());
         type.setDescription(request.getDescription());
         type.setObjectKind(request.getObjectKind().trim());
+        type.setRequiredOnFinancialTransactions(Boolean.TRUE.equals(request.getRequiredOnFinancialTransactions()));
+        type.setRequiredBalancing(Boolean.TRUE.equals(request.getRequiredBalancing()));
+        type.setBudgetControlEnabled(Boolean.TRUE.equals(request.getBudgetControlEnabled()));
         type.setAllowInstanceAccountingBudgetOverride(Boolean.TRUE.equals(request.getAllowInstanceAccountingBudgetOverride()));
         type.setAccountingBudgetDefaults(request.getAccountingBudgetDefaults());
         touchUpdate(type);
@@ -93,6 +99,9 @@ public class BusinessObjectService {
         object.setCode(normalizeCode(request.getCode()));
         object.setName(request.getName().trim());
         object.setDescription(request.getDescription());
+        object.setRequiredOnFinancialTransactions(Boolean.TRUE.equals(request.getRequiredOnFinancialTransactions()));
+        object.setRequiredBalancing(Boolean.TRUE.equals(request.getRequiredBalancing()));
+        object.setBudgetControlEnabled(Boolean.TRUE.equals(request.getBudgetControlEnabled()));
         object.setEffectiveDate(request.getEffectiveDate());
         object.setVisibility(request.getVisibility());
         object.setHierarchies(request.getHierarchies());
@@ -116,6 +125,9 @@ public class BusinessObjectService {
         object.setCode(normalizeCode(request.getCode()));
         object.setName(request.getName().trim());
         object.setDescription(request.getDescription());
+        object.setRequiredOnFinancialTransactions(Boolean.TRUE.equals(request.getRequiredOnFinancialTransactions()));
+        object.setRequiredBalancing(Boolean.TRUE.equals(request.getRequiredBalancing()));
+        object.setBudgetControlEnabled(Boolean.TRUE.equals(request.getBudgetControlEnabled()));
         object.setEffectiveDate(request.getEffectiveDate());
         object.setVisibility(request.getVisibility());
         object.setHierarchies(request.getHierarchies());

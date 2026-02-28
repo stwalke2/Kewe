@@ -112,6 +112,9 @@ export interface BusinessObjectType {
   objectKind: string;
   status: string;
   description?: string;
+  requiredOnFinancialTransactions?: boolean;
+  requiredBalancing?: boolean;
+  budgetControlEnabled?: boolean;
   allowInstanceAccountingBudgetOverride?: boolean;
   accountingBudgetDefaults: AccountingBudgetSetup;
 }
@@ -135,6 +138,9 @@ export interface BusinessObjectInstance {
   code: string;
   name: string;
   description?: string;
+  requiredOnFinancialTransactions?: boolean;
+  requiredBalancing?: boolean;
+  budgetControlEnabled?: boolean;
   effectiveDate?: string;
   visibility?: string;
   hierarchies?: HierarchyAssignment[];

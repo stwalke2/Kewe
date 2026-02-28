@@ -20,6 +20,9 @@ public class BusinessObjectRequest {
     @NotBlank
     private String name;
     private String description;
+    private Boolean requiredOnFinancialTransactions;
+    private Boolean requiredBalancing;
+    private Boolean budgetControlEnabled;
     private Instant effectiveDate;
     private String visibility;
     private List<HierarchyAssignment> hierarchies = new ArrayList<>();
@@ -34,6 +37,14 @@ public class BusinessObjectRequest {
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public Boolean getRequiredOnFinancialTransactions() { return requiredOnFinancialTransactions; }
+    public void setRequiredOnFinancialTransactions(Boolean requiredOnFinancialTransactions) {
+        this.requiredOnFinancialTransactions = requiredOnFinancialTransactions;
+    }
+    public Boolean getRequiredBalancing() { return requiredBalancing; }
+    public void setRequiredBalancing(Boolean requiredBalancing) { this.requiredBalancing = requiredBalancing; }
+    public Boolean getBudgetControlEnabled() { return budgetControlEnabled; }
+    public void setBudgetControlEnabled(Boolean budgetControlEnabled) { this.budgetControlEnabled = budgetControlEnabled; }
     public Instant getEffectiveDate() { return effectiveDate; }
     public void setEffectiveDate(Instant effectiveDate) { this.effectiveDate = effectiveDate; }
     public String getVisibility() { return visibility; }

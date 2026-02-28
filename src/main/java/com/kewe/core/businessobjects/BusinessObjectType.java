@@ -16,6 +16,9 @@ public class BusinessObjectType extends CanonicalObject {
     private String name;
     private String description;
     private String objectKind;
+    private boolean requiredOnFinancialTransactions;
+    private boolean requiredBalancing;
+    private boolean budgetControlEnabled;
     private boolean allowInstanceAccountingBudgetOverride;
     private AccountingBudgetSetup accountingBudgetDefaults = new AccountingBudgetSetup();
 
@@ -27,6 +30,14 @@ public class BusinessObjectType extends CanonicalObject {
     public void setDescription(String description) { this.description = description; }
     public String getObjectKind() { return objectKind; }
     public void setObjectKind(String objectKind) { this.objectKind = objectKind; }
+    public boolean isRequiredOnFinancialTransactions() { return requiredOnFinancialTransactions; }
+    public void setRequiredOnFinancialTransactions(boolean requiredOnFinancialTransactions) {
+        this.requiredOnFinancialTransactions = requiredOnFinancialTransactions;
+    }
+    public boolean isRequiredBalancing() { return requiredBalancing; }
+    public void setRequiredBalancing(boolean requiredBalancing) { this.requiredBalancing = requiredBalancing; }
+    public boolean isBudgetControlEnabled() { return budgetControlEnabled; }
+    public void setBudgetControlEnabled(boolean budgetControlEnabled) { this.budgetControlEnabled = budgetControlEnabled; }
     public boolean isAllowInstanceAccountingBudgetOverride() { return allowInstanceAccountingBudgetOverride; }
     public void setAllowInstanceAccountingBudgetOverride(boolean allowInstanceAccountingBudgetOverride) { this.allowInstanceAccountingBudgetOverride = allowInstanceAccountingBudgetOverride; }
     public AccountingBudgetSetup getAccountingBudgetDefaults() { return accountingBudgetDefaults; }

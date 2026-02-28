@@ -35,6 +35,9 @@ export function BusinessObjectDetailPage() {
             code: model.code,
             name: draft.name,
             description: draft.definition,
+            requiredOnFinancialTransactions: draft.requiredOnFinancialTransactions,
+            requiredBalancing: draft.requiredBalancing,
+            budgetControlEnabled: draft.budgetControlEnabled,
             effectiveDate: model.effectiveDate,
             visibility: model.visibility,
             hierarchies: (draft.includedHierarchies ?? []).map((value) => ({ hierarchyCode: value })),
@@ -43,6 +46,9 @@ export function BusinessObjectDetailPage() {
           setModel(updated);
         }}
         isType={false}
+        requiredOnFinancialTransactions={model.requiredOnFinancialTransactions}
+        requiredBalancing={model.requiredBalancing}
+        budgetControlEnabled={model.budgetControlEnabled}
       />
     </section>
   );
