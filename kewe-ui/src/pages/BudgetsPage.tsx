@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { fetchDimensionTree, fetchDimensionTypes, getErrorDetails } from '../api';
-import type { ApiErrorDetails, DimensionNode } from '../api/types';
+import { fetchBusinessObjects, getErrorDetails } from '../api';
+import type { ApiErrorDetails, BusinessObjectInstance } from '../api/types';
 
 type AllocationRow = {
   id: string;
@@ -85,13 +85,11 @@ export function BudgetsPage() {
     try {
       setDimensionLoading(true);
       setDimensionError(null);
-      const types = await fetchDimensionTypes();
-      const allNodes = await Promise.all(types.map((type) => fetchDimensionTree(type.code)));
-      const activeNodes = allNodes
-        .flat()
-        .filter((node) => node.status.trim().toLowerCase() === 'active')
+      const businessDimensions = await fetchBusinessObjects();
+      const activeDimensions = businessDimensions
+        .filter((dimension) => dimension.status.trim().toLowerCase() === 'active')
         .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
-      setDimensionOptions(activeNodes.map((node) => ({ id: node.id, label: toDimensionLabel(node) })));
+      setDimensionOptions(activeDimensions.map((dimension) => ({ id: dimension.id, label: toDimensionLabel(dimension) })));
     } catch (error) {
       setDimensionError(getErrorDetails(error));
     } finally {
@@ -439,6 +437,6 @@ export function BudgetsPage() {
   );
 }
 
-function toDimensionLabel(node: DimensionNode): string {
-  return `${node.code} — ${node.name}`;
+function toDimensionLabel(dimension: BusinessObjectInstance): string {
+  return `${dimension.code} — ${dimension.name}`;
 }
