@@ -7,8 +7,11 @@ server:
   port: 8080
 
 kewe:
-  search-provider: ${KEWE_SEARCH_PROVIDER:none}
-  serpapi-key: ${KEWE_SERPAPI_KEY:}
+  search-provider: ${KEWE_SEARCH_PROVIDER:bing}
   bing-key: ${KEWE_BING_KEY:}
   bing-endpoint: ${KEWE_BING_ENDPOINT:https://api.bing.microsoft.com/v7.0/search}
-  playwright-enabled: ${KEWE_PLAYWRIGHT_ENABLED:true}
+  bing-mkt: ${KEWE_BING_MKT:en-US}
+  bing-safe-search: ${KEWE_BING_SAFESEARCH:Moderate}
+  bing-result-count: ${KEWE_BING_RESULT_COUNT:5}
+  bing-timeout-ms: ${KEWE_BING_TIMEOUT_MS:6000}
+  search-cache-ttl-seconds: ${KEWE_SEARCH_CACHE_TTL_SECONDS:3600}

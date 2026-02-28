@@ -6,7 +6,6 @@ import com.kewe.core.businessobjects.BusinessObjectType;
 import com.kewe.core.businessobjects.BusinessObjectTypeRepository;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -52,56 +51,74 @@ public class FundingService {
         }
 
         return toDimensionDtos(businessObjectRepository.findAllById(ids), ids).stream()
-                .sorted(Comparator.comparing(ChargingLocationDto::typeName)
+                .sorted(Comparator.comparing(ChargingLocationDto::type)
                         .thenComparing(ChargingLocationDto::code)
                         .thenComparing(ChargingLocationDto::name))
                 .toList();
     }
 
-    public FundingSnapshotDto fundingSnapshot(String chargingDimensionId, String budgetPlanId, double requisitionTotal) {
+    public FundingSnapshotResponse fundingSnapshot(String chargingDimensionId, String budgetPlan) {
         BusinessObjectInstance charging = businessObjectRepository.findById(chargingDimensionId).orElse(null);
         if (charging == null) {
-            return new FundingSnapshotDto(null, null, List.of(), List.of(),
-                    new FundingTotalsDto(null, 0, 0, requisitionTotal, null));
+            return new FundingSnapshotResponse(null, null, null, List.of(),
+                    new FundingTotalsDto(null, 0, null));
         }
 
-        Optional<BudgetRecord> budget = budgetPlanId == null || budgetPlanId.isBlank()
-                ? budgetRepository.findByBusinessDimensionId(chargingDimensionId).stream().findFirst()
-                : budgetRepository.findFirstByBusinessDimensionIdAndBudgetPlanId(chargingDimensionId, budgetPlanId);
+        List<BudgetRecord> budgetsForDimension = budgetRepository.findByBusinessDimensionId(chargingDimensionId);
+        Optional<BudgetRecord> matchedBudget = resolveBudgetByPlan(budgetsForDimension, budgetPlan);
+        String resolvedPlanId = matchedBudget.map(BudgetRecord::getBudgetPlanId)
+                .or(() -> resolvePlanIdFromAllocations(chargingDimensionId, budgetPlan))
+                .orElse(budgetPlan);
 
-        List<AllocationRecord> fromAllocations = budgetPlanId == null || budgetPlanId.isBlank()
+        List<AllocationRecord> fromAllocations = isBlank(resolvedPlanId)
                 ? allocationRepository.findByAllocatedFromDimensionId(chargingDimensionId)
-                : allocationRepository.findByAllocatedFromDimensionIdAndBudgetPlanId(chargingDimensionId, budgetPlanId);
+                : allocationRepository.findByAllocatedFromDimensionIdAndBudgetPlanId(chargingDimensionId, resolvedPlanId);
 
-        List<AllocationRecord> toAllocations = budgetPlanId == null || budgetPlanId.isBlank()
-                ? allocationRepository.findByAllocatedToDimensionId(chargingDimensionId)
-                : allocationRepository.findByAllocatedToDimensionIdAndBudgetPlanId(chargingDimensionId, budgetPlanId);
+        List<AllocationSnapshotDto> from = toAllocationViews(fromAllocations, true);
 
-        List<AllocationViewDto> from = toAllocationViews(fromAllocations, true);
-        List<AllocationViewDto> to = toAllocationViews(toAllocations, false);
+        Double budgetTotal = matchedBudget.map(BudgetRecord::getAmount).orElse(null);
+        double allocatedFromTotal = from.stream().mapToDouble(AllocationSnapshotDto::amount).sum();
+        Double remaining = budgetTotal == null ? null : budgetTotal - allocatedFromTotal;
 
-        Double budgetTotal = budget.map(BudgetRecord::getAmount).orElse(null);
-        double allocatedFromTotal = from.stream().mapToDouble(AllocationViewDto::amount).sum();
-        double allocatedToTotal = to.stream().mapToDouble(AllocationViewDto::amount).sum();
-        Double remaining = budgetTotal == null ? null : budgetTotal - allocatedFromTotal - requisitionTotal;
+        BudgetPlanDto budgetPlanDto = matchedBudget
+                .map(value -> new BudgetPlanDto(value.getBudgetPlanId(), value.getBudgetPlanName()))
+                .orElseGet(() -> isBlank(resolvedPlanId) ? null : new BudgetPlanDto(resolvedPlanId, resolvedPlanId));
 
-        return new FundingSnapshotDto(
+        return new FundingSnapshotResponse(
                 toDimensionDto(charging),
-                budget.map(value -> new BudgetViewDto(value.getId(), value.getBudgetPlanId(), value.getBudgetPlanName(), value.getAmount())).orElse(null),
+                budgetPlanDto,
+                matchedBudget.map(value -> new BudgetAmountDto(value.getId(), value.getAmount())).orElse(null),
                 from,
-                to,
-                new FundingTotalsDto(budgetTotal, allocatedFromTotal, allocatedToTotal, requisitionTotal, remaining)
+                new FundingTotalsDto(budgetTotal, allocatedFromTotal, remaining)
         );
     }
 
-    public boolean hasBudget(String dimensionId, String budgetPlanId) {
-        if (budgetPlanId == null || budgetPlanId.isBlank()) {
-            return !budgetRepository.findByBusinessDimensionId(dimensionId).isEmpty();
+    private Optional<String> resolvePlanIdFromAllocations(String chargingDimensionId, String budgetPlan) {
+        if (isBlank(budgetPlan)) {
+            return Optional.empty();
         }
-        return budgetRepository.findFirstByBusinessDimensionIdAndBudgetPlanId(dimensionId, budgetPlanId).isPresent();
+        String normalized = normalizePlanKey(budgetPlan);
+        return allocationRepository.findByAllocatedFromDimensionId(chargingDimensionId).stream()
+                .map(AllocationRecord::getBudgetPlanId)
+                .filter(planId -> normalizePlanKey(planId).equals(normalized))
+                .findFirst();
     }
 
-    private List<AllocationViewDto> toAllocationViews(List<AllocationRecord> allocations, boolean from) {
+    private Optional<BudgetRecord> resolveBudgetByPlan(List<BudgetRecord> budgets, String budgetPlan) {
+        if (budgets.isEmpty()) {
+            return Optional.empty();
+        }
+        if (isBlank(budgetPlan)) {
+            return budgets.stream().findFirst();
+        }
+        String normalized = normalizePlanKey(budgetPlan);
+        return budgets.stream()
+                .filter(budget -> normalizePlanKey(budget.getBudgetPlanId()).equals(normalized)
+                        || normalizePlanKey(budget.getBudgetPlanName()).equals(normalized))
+                .findFirst();
+    }
+
+    private List<AllocationSnapshotDto> toAllocationViews(List<AllocationRecord> allocations, boolean from) {
         Set<String> relatedIds = new HashSet<>();
         allocations.forEach(allocation -> relatedIds.add(from ? allocation.getAllocatedToDimensionId() : allocation.getAllocatedFromDimensionId()));
         Map<String, BusinessObjectInstance> dimensionById = new HashMap<>();
@@ -110,7 +127,7 @@ public class FundingService {
         return allocations.stream()
                 .map(allocation -> {
                     String relatedId = from ? allocation.getAllocatedToDimensionId() : allocation.getAllocatedFromDimensionId();
-                    return new AllocationViewDto(allocation.getId(), toDimensionDto(dimensionById.get(relatedId)), allocation.getAmount());
+                    return new AllocationSnapshotDto(allocation.getId(), toDimensionDto(dimensionById.get(relatedId)), allocation.getAmount());
                 })
                 .toList();
     }
@@ -139,12 +156,25 @@ public class FundingService {
         return result;
     }
 
-    public record ChargingLocationDto(String id, String code, String name, String typeName, String status) {}
-    public record BudgetViewDto(String id, String budgetPlanId, String budgetPlanName, double amount) {}
-    public record AllocationViewDto(String id, ChargingLocationDto allocatedDimension, double amount) {}
-    public record FundingTotalsDto(Double budgetTotal, double allocatedFromTotal, double allocatedToTotal, double requisitionTotal,
-                                   Double remainingIfBudget) {}
-    public record FundingSnapshotDto(ChargingLocationDto chargingDimension, BudgetViewDto budget,
-                                     List<AllocationViewDto> allocationsFrom, List<AllocationViewDto> allocationsTo,
-                                     FundingTotalsDto totals) {}
+    private String normalizePlanKey(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value.toLowerCase().replaceAll("[\\s_-]+", "").trim();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
+    }
+
+    public record ChargingLocationDto(String id, String code, String name, String type, String status) {}
+    public record BudgetPlanDto(String id, String name) {}
+    public record BudgetAmountDto(String id, double amount) {}
+    public record AllocationSnapshotDto(String id, ChargingLocationDto allocatedTo, double amount) {}
+    public record FundingTotalsDto(Double budgetTotal, double allocatedFromTotal, Double remainingBeforeReq) {}
+    public record FundingSnapshotResponse(ChargingLocationDto chargingDimension,
+                                          BudgetPlanDto budgetPlan,
+                                          BudgetAmountDto budget,
+                                          List<AllocationSnapshotDto> allocationsFrom,
+                                          FundingTotalsDto totals) {}
 }
