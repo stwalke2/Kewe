@@ -89,7 +89,7 @@ export function BudgetsPage() {
       const allNodes = await Promise.all(types.map((type) => fetchDimensionTree(type.code)));
       const activeNodes = allNodes
         .flat()
-        .filter((node) => node.status === 'ACTIVE')
+        .filter((node) => node.status.trim().toLowerCase() === 'active')
         .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
       setDimensionOptions(activeNodes.map((node) => ({ id: node.id, label: toDimensionLabel(node) })));
     } catch (error) {
@@ -256,7 +256,6 @@ export function BudgetsPage() {
           <p>Set budgets by Business Dimension, then allocate those budgets through nested allocations.</p>
         </div>
         <div className="header-actions">
-          <button type="button" className="btn btn-secondary" onClick={() => void loadDimensions()}>Refresh Business Dimensions</button>
           <button type="button" className="btn btn-primary" onClick={openCreateBudget}>Add Budget</button>
         </div>
       </div>
