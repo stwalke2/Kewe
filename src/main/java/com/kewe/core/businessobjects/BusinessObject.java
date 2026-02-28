@@ -15,6 +15,9 @@ public abstract class BusinessObject extends CanonicalObject {
     private String code;
     private String name;
     private String description;
+    private boolean requiredOnFinancialTransactions;
+    private boolean requiredBalancing;
+    private boolean budgetControlEnabled;
     private Instant effectiveDate;
     private String visibility;
     private List<HierarchyAssignment> hierarchies = new ArrayList<>();
@@ -31,6 +34,14 @@ public abstract class BusinessObject extends CanonicalObject {
     public void setName(String name) { this.name = name; }
     public String getDescription() { return description; }
     public void setDescription(String description) { this.description = description; }
+    public boolean isRequiredOnFinancialTransactions() { return requiredOnFinancialTransactions; }
+    public void setRequiredOnFinancialTransactions(boolean requiredOnFinancialTransactions) {
+        this.requiredOnFinancialTransactions = requiredOnFinancialTransactions;
+    }
+    public boolean isRequiredBalancing() { return requiredBalancing; }
+    public void setRequiredBalancing(boolean requiredBalancing) { this.requiredBalancing = requiredBalancing; }
+    public boolean isBudgetControlEnabled() { return budgetControlEnabled; }
+    public void setBudgetControlEnabled(boolean budgetControlEnabled) { this.budgetControlEnabled = budgetControlEnabled; }
     public Instant getEffectiveDate() { return effectiveDate; }
     public void setEffectiveDate(Instant effectiveDate) { this.effectiveDate = effectiveDate; }
     public String getVisibility() { return visibility; }

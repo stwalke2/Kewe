@@ -271,4 +271,63 @@ class BusinessObjectIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.objectKind").value("Business Dimension"));
     }
+
+
+    @Test
+    void shouldPersistBusinessDimensionGeneralSettings() throws Exception {
+        mockMvc.perform(post("/api/business-object-types")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "code": "PROG",
+                                  "name": "Program",
+                                  "objectKind": "Business Dimension",
+                                  "requiredOnFinancialTransactions": true,
+                                  "requiredBalancing": true,
+                                  "budgetControlEnabled": false
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requiredOnFinancialTransactions").value(true))
+                .andExpect(jsonPath("$.requiredBalancing").value(true))
+                .andExpect(jsonPath("$.budgetControlEnabled").value(false));
+
+        String objectJson = mockMvc.perform(post("/api/business-object-types/objects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "PROG",
+                                  "code": "P-01",
+                                  "name": "Program 01",
+                                  "requiredOnFinancialTransactions": true,
+                                  "requiredBalancing": false,
+                                  "budgetControlEnabled": true
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.requiredOnFinancialTransactions").value(true))
+                .andExpect(jsonPath("$.requiredBalancing").value(false))
+                .andExpect(jsonPath("$.budgetControlEnabled").value(true))
+                .andReturn().getResponse().getContentAsString();
+
+        String objectId = objectMapper.readTree(objectJson).get("id").asText();
+
+        mockMvc.perform(put("/api/business-object-types/objects/" + objectId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "PROG",
+                                  "code": "P-01",
+                                  "name": "Program 01",
+                                  "requiredOnFinancialTransactions": false,
+                                  "requiredBalancing": true,
+                                  "budgetControlEnabled": false
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requiredOnFinancialTransactions").value(false))
+                .andExpect(jsonPath("$.requiredBalancing").value(true))
+                .andExpect(jsonPath("$.budgetControlEnabled").value(false));
+    }
+
 }

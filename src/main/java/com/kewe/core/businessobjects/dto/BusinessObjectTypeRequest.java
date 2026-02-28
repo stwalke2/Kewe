@@ -12,6 +12,9 @@ public class BusinessObjectTypeRequest {
     private String description;
     @NotBlank
     private String objectKind;
+    private Boolean requiredOnFinancialTransactions;
+    private Boolean requiredBalancing;
+    private Boolean budgetControlEnabled;
     private Boolean allowInstanceAccountingBudgetOverride;
     private AccountingBudgetSetup accountingBudgetDefaults;
 
@@ -23,6 +26,14 @@ public class BusinessObjectTypeRequest {
     public void setDescription(String description) { this.description = description; }
     public String getObjectKind() { return objectKind; }
     public void setObjectKind(String objectKind) { this.objectKind = objectKind; }
+    public Boolean getRequiredOnFinancialTransactions() { return requiredOnFinancialTransactions; }
+    public void setRequiredOnFinancialTransactions(Boolean requiredOnFinancialTransactions) {
+        this.requiredOnFinancialTransactions = requiredOnFinancialTransactions;
+    }
+    public Boolean getRequiredBalancing() { return requiredBalancing; }
+    public void setRequiredBalancing(Boolean requiredBalancing) { this.requiredBalancing = requiredBalancing; }
+    public Boolean getBudgetControlEnabled() { return budgetControlEnabled; }
+    public void setBudgetControlEnabled(Boolean budgetControlEnabled) { this.budgetControlEnabled = budgetControlEnabled; }
     public Boolean getAllowInstanceAccountingBudgetOverride() { return allowInstanceAccountingBudgetOverride; }
     public void setAllowInstanceAccountingBudgetOverride(Boolean allowInstanceAccountingBudgetOverride) { this.allowInstanceAccountingBudgetOverride = allowInstanceAccountingBudgetOverride; }
     public AccountingBudgetSetup getAccountingBudgetDefaults() { return accountingBudgetDefaults; }

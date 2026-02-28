@@ -29,12 +29,18 @@ export function BusinessObjectTypeDetailPage() {
             name: draft.name,
             objectKind: model.objectKind,
             description: draft.definition,
+            requiredOnFinancialTransactions: draft.requiredOnFinancialTransactions,
+            requiredBalancing: draft.requiredBalancing,
+            budgetControlEnabled: draft.budgetControlEnabled,
             allowInstanceAccountingBudgetOverride: model.allowInstanceAccountingBudgetOverride ?? false,
             accountingBudgetDefaults: model.accountingBudgetDefaults,
           });
           setModel(updated);
         }}
         isType
+        requiredOnFinancialTransactions={model.requiredOnFinancialTransactions}
+        requiredBalancing={model.requiredBalancing}
+        budgetControlEnabled={model.budgetControlEnabled}
       />
     </section>
   );
