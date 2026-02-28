@@ -5,3 +5,10 @@ spring:
 
 server:
   port: 8080
+
+kewe:
+  search-provider: ${KEWE_SEARCH_PROVIDER:none}
+  serpapi-key: ${KEWE_SERPAPI_KEY:}
+  bing-key: ${KEWE_BING_KEY:}
+  bing-endpoint: ${KEWE_BING_ENDPOINT:https://api.bing.microsoft.com/v7.0/search}
+  playwright-enabled: ${KEWE_PLAYWRIGHT_ENABLED:true}

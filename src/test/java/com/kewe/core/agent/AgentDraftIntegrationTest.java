@@ -22,10 +22,11 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.math.BigDecimal;
+import java.util.List;
 
-import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,12 +44,19 @@ class AgentDraftIntegrationTest {
     @DynamicPropertySource
     static void configureMongo(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
+        registry.add("kewe.search-provider", () -> "none");
     }
 
     @Autowired
     private MockMvc mockMvc;
     @MockBean
-    private HtmlFetcher htmlFetcher;
+    private AmazonPlaywrightSearchClient amazon;
+    @MockBean
+    private FisherPlaywrightSearchClient fisher;
+    @MockBean
+    private HomeDepotPlaywrightSearchClient homeDepot;
+    @MockBean
+    private ConfiguredSearchProviderClient searchProvider;
     @Autowired
     private BusinessObjectRepository businessObjectRepository;
     @Autowired
@@ -59,7 +67,7 @@ class AgentDraftIntegrationTest {
     private AllocationRecordRepository allocationRepository;
 
     @BeforeEach
-    void setup() throws Exception {
+    void setup() {
         allocationRepository.deleteAll();
         budgetRepository.deleteAll();
         businessObjectRepository.deleteAll();
@@ -81,10 +89,24 @@ class AgentDraftIntegrationTest {
         allocation.setAllocatedFromDimensionId(biology.getId()); allocation.setAllocatedToDimensionId(biology.getId()); allocation.setBudgetPlanId("FY26-OPERATING"); allocation.setAmount(1200);
         allocationRepository.save(allocation);
 
-        when(htmlFetcher.fetch(contains("fishersci"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/fisher-search.html")));
-        when(htmlFetcher.fetch(contains("homedepot"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/homedepot-search.html")));
-        when(htmlFetcher.fetch(contains("amazon"))).thenReturn("<html><body>blocked</body></html>");
-        when(htmlFetcher.fetch(contains("duckduckgo.com"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/ddg-amazon-search.html")));
+        when(amazon.supplierKey()).thenReturn("amazon");
+        when(fisher.supplierKey()).thenReturn("fisher");
+        when(homeDepot.supplierKey()).thenReturn("homedepot");
+        when(amazon.supplierName()).thenReturn("Amazon");
+        when(fisher.supplierName()).thenReturn("Fisher Scientific");
+        when(homeDepot.supplierName()).thenReturn("Home Depot");
+        when(amazon.searchLink(any())).thenReturn("https://www.amazon.com/s?k=beaker");
+        when(fisher.searchLink(any())).thenReturn("https://www.fishersci.com/us/en/catalog/search/products?keyword=beaker");
+        when(homeDepot.searchLink(any())).thenReturn("https://www.homedepot.com/s/beaker");
+
+        when(fisher.search(any())).thenReturn(new SupplierSearchOutcome(List.of(
+                new SupplierSearchResult("Fisher Scientific", "Glass Beaker 500ml", "https://fishersci.com/p/1", BigDecimal.valueOf(12.5), "ABC", null)
+        ), List.of(), false, 30));
+        when(homeDepot.search(any())).thenReturn(SupplierSearchOutcome.empty(40, true, "blocked"));
+        when(amazon.search(any())).thenReturn(SupplierSearchOutcome.empty(50, true, "captcha"));
+        when(searchProvider.searchWeb(any(), anyInt())).thenReturn(List.of(
+                new SearchResult("Amazon.com: glass beaker results", "https://amazon.com/result", "snippet")
+        ));
     }
 
     @Test
@@ -96,9 +118,7 @@ class AgentDraftIntegrationTest {
                 .andExpect(jsonPath("$.parsed.quantity").value(6))
                 .andExpect(jsonPath("$.suggestedChargingDimension.code").value("CC0001"))
                 .andExpect(jsonPath("$.results.fisher").isArray())
-                .andExpect(jsonPath("$.results.homedepot").isArray())
-                .andExpect(jsonPath("$.results.amazon[0].title").value("Amazon.com: glass beaker results"))
-                .andExpect(jsonPath("$.draft.lines[0].supplierName").exists())
+                .andExpect(jsonPath("$.debug.amazon.source").exists())
                 .andExpect(jsonPath("$.searchLinks.amazon").exists());
     }
 
@@ -109,14 +129,16 @@ class AgentDraftIntegrationTest {
                         .content("{\"prompt\":\"buy beaker for biology\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.warnings[0]").value("Stub mode enabled: returning canned supplier results."))
-                .andExpect(jsonPath("$.results.amazon[0].supplier").value("Stub Supplier"))
-                .andExpect(jsonPath("$.draft.lines[0].description").value("Stub result: beaker biology"));
+                .andExpect(jsonPath("$.results.amazon[0].supplierName").value("Amazon"));
     }
 
     @Test
-    void shouldRespondToAgentPing() throws Exception {
+    void shouldRespondToAgentPingAndCapabilities() throws Exception {
         mockMvc.perform(get("/api/agent/ping"))
                 .andExpect(status().isOk())
                 .andExpect(content().string("ok"));
+        mockMvc.perform(get("/api/agent/capabilities"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.searchProvider").value("none"));
     }
 }

@@ -2,12 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   agentDraftRequisition,
   createRequisitionDraft,
+  fetchAgentCapabilities,
   fetchBusinessObjects,
   fetchChargingLocations,
   fetchFundingSnapshot,
   updateRequisitionDraft,
 } from '../../api';
-import type { BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
+import type { AgentCapabilities, BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierDebug, SupplierResult } from '../../api/types';
 
 const SUPPLIERS = ['amazon', 'fisher', 'homedepot'] as const;
 const BUDGETS_STORAGE_KEY = 'kewe.budgets';
@@ -22,13 +23,17 @@ export function CreateRequisitionPage() {
   const [results, setResults] = useState<Record<string, SupplierResult[]>>({ amazon: [], fisher: [], homedepot: [] });
   const [links, setLinks] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
+  const [debug, setDebug] = useState<Record<string, SupplierDebug>>({});
   const [activeSupplier, setActiveSupplier] = useState<(typeof SUPPLIERS)[number]>('fisher');
   const [chargingLocations, setChargingLocations] = useState<ChargingLocation[]>([]);
   const [funding, setFunding] = useState<any>(null);
+  const [stubMode, setStubMode] = useState(false);
+  const [capabilities, setCapabilities] = useState<AgentCapabilities | null>(null);
 
   useEffect(() => {
     void createRequisitionDraft().then(setDraft);
     void loadChargingLocations();
+    void fetchAgentCapabilities().then(setCapabilities).catch(() => setCapabilities(null));
   }, []);
 
   async function loadChargingLocations() {
@@ -36,59 +41,37 @@ export function CreateRequisitionPage() {
       fetchChargingLocations(),
       loadBudgetDimensionIds(),
     ]);
-
     const locationById = new Map(backendLocations.map((location) => [location.id, location]));
     const missingBudgetIds = budgetDimensionIds.filter((id) => !locationById.has(id));
-
     if (missingBudgetIds.length > 0) {
       try {
         const businessDimensions = await fetchBusinessObjects();
-        businessDimensions
-          .filter((dimension) => missingBudgetIds.includes(dimension.id))
-          .forEach((dimension) => {
-            locationById.set(dimension.id, toChargingLocation(dimension));
-          });
+        businessDimensions.filter((dimension) => missingBudgetIds.includes(dimension.id)).forEach((dimension) => {
+          locationById.set(dimension.id, toChargingLocation(dimension));
+        });
       } catch {
-        // Keep backend locations only when business dimensions cannot be loaded.
+        // ignore
       }
     }
-
     const allowedIds = new Set([...backendLocations.map((location) => location.id), ...budgetDimensionIds]);
     const mergedLocations = [...locationById.values()]
       .filter((location) => allowedIds.has(location.id))
       .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
-
     setChargingLocations(mergedLocations);
   }
 
   async function loadBudgetDimensionIds(): Promise<string[]> {
-    if (typeof window === 'undefined') {
-      return [];
-    }
-
+    if (typeof window === 'undefined') return [];
     const rawBudgets = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
-    if (!rawBudgets) {
-      return [];
-    }
-
+    if (!rawBudgets) return [];
     try {
       const parsedBudgets = JSON.parse(rawBudgets);
-      if (!Array.isArray(parsedBudgets)) {
-        return [];
-      }
-
+      if (!Array.isArray(parsedBudgets)) return [];
       const ids = new Set<string>();
       (parsedBudgets as StoredBudget[]).forEach((budget) => {
-        if (budget.businessDimensionId) {
-          ids.add(budget.businessDimensionId);
-        }
-        budget.allocations?.forEach((allocation) => {
-          if (allocation.businessDimensionId) {
-            ids.add(allocation.businessDimensionId);
-          }
-        });
+        if (budget.businessDimensionId) ids.add(budget.businessDimensionId);
+        budget.allocations?.forEach((allocation) => allocation.businessDimensionId && ids.add(allocation.businessDimensionId));
       });
-
       return [...ids];
     } catch {
       return [];
@@ -112,14 +95,12 @@ export function CreateRequisitionPage() {
     if (!prompt.trim() || !draft) return;
     setWarnings([]);
     try {
-      setStatus('Parsing request…');
-      await new Promise((r) => setTimeout(r, 300));
       setStatus('Searching suppliers…');
-      const response = await agentDraftRequisition(prompt);
-      setStatus('Building draft…');
+      const response = await agentDraftRequisition(prompt, stubMode ? 'stub' : undefined);
       setResults(response.results);
       setLinks(response.searchLinks);
       setWarnings(response.warnings);
+      setDebug(response.debug || {});
       setDraft({
         ...draft,
         title: response.draft.title,
@@ -134,6 +115,7 @@ export function CreateRequisitionPage() {
       setWarnings(['Could not draft requisition. Verify backend is running and retry.']);
       setResults({ amazon: [], fisher: [], homedepot: [] });
       setLinks({});
+      setDebug({});
     } finally {
       setStatus(null);
     }
@@ -141,7 +123,7 @@ export function CreateRequisitionPage() {
 
   function addResult(result: SupplierResult) {
     if (!draft) return;
-    const existing = draft.lines.find((line) => line.supplierSku && line.supplierSku === result.sku && line.supplierName === result.supplier);
+    const existing = draft.lines.find((line) => line.supplierSku && line.supplierSku === result.sku && line.supplierName === result.supplierName);
     let lines: RequisitionLine[];
     if (existing) {
       lines = draft.lines.map((line) => line === existing
@@ -156,7 +138,7 @@ export function CreateRequisitionPage() {
         uom: 'ea',
         unitPrice,
         amount: unitPrice,
-        supplierName: result.supplier,
+        supplierName: result.supplierName,
         supplierUrl: result.url,
         supplierSku: result.sku,
       }];
@@ -174,6 +156,8 @@ export function CreateRequisitionPage() {
         <button type="button" onClick={() => void runAgent()}>Find Items & Draft Requisition</button>
         <button type="button" className="secondary" onClick={() => setDraft({ ...draft, lines: [] })}>Clear Draft</button>
       </div>
+      <label><input type="checkbox" checked={stubMode} onChange={(e) => setStubMode(e.target.checked)} /> Use stub results (dev)</label>
+      {capabilities && <p>Capabilities: Playwright {String(capabilities.playwrightEnabled)} • Provider {capabilities.searchProvider} • Key {String(capabilities.hasSearchKey)}</p>}
       {status && <p>{status}</p>}
       {warnings.map((warning) => <p key={warning} className="text-danger">{warning}</p>)}
 
@@ -181,15 +165,23 @@ export function CreateRequisitionPage() {
         <section>
           <h3>Results</h3>
           <div className="pill-row">{SUPPLIERS.map((s) => <button key={s} type="button" className={activeSupplier === s ? 'active' : ''} onClick={() => setActiveSupplier(s)}>{s}</button>)}</div>
+          <p>Source: {debug[activeSupplier]?.source ?? 'linkOnly'}</p>
           {(results[activeSupplier] ?? []).map((result) => (
-            <div className="card" key={`${result.supplier}-${result.url}`}>
+            <div className="card" key={`${result.supplierName}-${result.url}`}>
               <strong>{result.title}</strong>
-              <div>{result.supplier} {result.price ? `• $${result.price.toFixed(2)}` : '• price n/a'}</div>
+              <div>{result.supplierName} {result.price ? `• $${result.price.toFixed(2)}` : '• price n/a'}</div>
+              {result.snippet && <small>{result.snippet}</small>}
               <a href={result.url} target="_blank" rel="noreferrer">Open</a>
               <button type="button" onClick={() => addResult(result)}>Add to Requisition</button>
             </div>
           ))}
-          {(results[activeSupplier] ?? []).length === 0 && links[activeSupplier] && <a href={links[activeSupplier]} target="_blank" rel="noreferrer">Open {activeSupplier} search</a>}
+          {(results[activeSupplier] ?? []).length === 0 && (
+            <div className="card">
+              <strong>No fetched results</strong>
+              <div>Open supplier search directly.</div>
+              {links[activeSupplier] && <a href={links[activeSupplier]} target="_blank" rel="noreferrer">Open {activeSupplier} search</a>}
+            </div>
+          )}
         </section>
 
         <section>

@@ -187,12 +187,25 @@ export interface ChargingLocation {
 }
 
 export interface SupplierResult {
-  supplier: string;
+  supplierName: string;
   title: string;
-  price?: number;
-  availability?: string;
   url: string;
+  price?: number;
   sku?: string;
+  snippet?: string;
+}
+
+export interface SupplierDebug {
+  elapsedMs: number;
+  blockedOrFailed: boolean;
+  source: 'playwright' | 'searchProvider' | 'linkOnly';
+  reason?: string;
+}
+
+export interface AgentCapabilities {
+  playwrightEnabled: boolean;
+  searchProvider: 'none' | 'serpapi' | 'bing';
+  hasSearchKey: boolean;
 }
 
 export interface AgentDraftResponse {
@@ -202,6 +215,7 @@ export interface AgentDraftResponse {
   results: Record<string, SupplierResult[]>;
   draft: { title: string; memo: string; currency: string; lines: RequisitionLine[] };
   warnings: string[];
+  debug: Record<string, SupplierDebug>;
 }
 
 export interface FundingSnapshot {
