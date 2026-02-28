@@ -2,6 +2,8 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { fetchBusinessObjects, getErrorDetails } from '../api';
 import type { ApiErrorDetails, BusinessObjectInstance } from '../api/types';
 
+const BUDGETS_STORAGE_KEY = 'kewe.budgets';
+
 type AllocationRow = {
   id: string;
   businessDimensionId: string;
@@ -49,8 +51,23 @@ function emptyAllocationForm(): AllocationForm {
   return { businessDimensionId: '', amount: '' };
 }
 
+function loadStoredBudgets(): BudgetRow[] {
+  if (typeof window === 'undefined') return [];
+
+  const rawBudgets = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
+  if (!rawBudgets) return [];
+
+  try {
+    const parsedBudgets = JSON.parse(rawBudgets);
+    if (!Array.isArray(parsedBudgets)) return [];
+    return parsedBudgets as BudgetRow[];
+  } catch {
+    return [];
+  }
+}
+
 export function BudgetsPage() {
-  const [budgets, setBudgets] = useState<BudgetRow[]>([]);
+  const [budgets, setBudgets] = useState<BudgetRow[]>(() => loadStoredBudgets());
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [budgetModalId, setBudgetModalId] = useState<string | null>(null);
   const [budgetModalMode, setBudgetModalMode] = useState<'create' | 'edit' | null>(null);
@@ -66,6 +83,10 @@ export function BudgetsPage() {
   useEffect(() => {
     void loadDimensions();
   }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(budgets));
+  }, [budgets]);
 
   const dimensionLabelById = useMemo(() => new Map(dimensionOptions.map((option) => [option.id, option.label])), [dimensionOptions]);
 
