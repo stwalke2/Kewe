@@ -2,20 +2,21 @@ package com.kewe.core.agent;
 
 import com.kewe.core.funding.FundingService;
 import com.kewe.core.requisition.RequisitionLine;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -27,164 +28,167 @@ public class AgentSearchService {
 
     private final PromptParser parser;
     private final FundingService fundingService;
-    private final HtmlFetcher htmlFetcher;
-    private final AmazonSearchClient amazon;
-    private final FisherSearchClient fisher;
-    private final HomeDepotSearchClient homeDepot;
+    private final ConfiguredSearchProviderClient searchProviderClient;
+    private final AgentSearchProperties properties;
+    private final List<SupplierSearchClient> supplierClients;
 
     public AgentSearchService(PromptParser parser,
                               FundingService fundingService,
-                              HtmlFetcher htmlFetcher,
-                              AmazonSearchClient amazon,
-                              FisherSearchClient fisher,
-                              HomeDepotSearchClient homeDepot) {
+                              ConfiguredSearchProviderClient searchProviderClient,
+                              AgentSearchProperties properties,
+                              List<SupplierSearchClient> supplierClients) {
         this.parser = parser;
         this.fundingService = fundingService;
-        this.htmlFetcher = htmlFetcher;
-        this.amazon = amazon;
-        this.fisher = fisher;
-        this.homeDepot = homeDepot;
+        this.searchProviderClient = searchProviderClient;
+        this.properties = properties;
+        this.supplierClients = supplierClients;
+    }
+
+    public CapabilitiesResponse capabilities() {
+        return new CapabilitiesResponse(
+                properties.isPlaywrightEnabled(),
+                properties.getSearchProvider().toLowerCase(Locale.ROOT),
+                properties.hasSearchKey()
+        );
     }
 
     public AgentDraftResponse createDraft(String prompt, boolean stubMode) {
+        long started = System.currentTimeMillis();
         PromptParser.ParsedPrompt parsed = parser.parse(prompt);
-        log.info("Agent draft request started (stubMode={}, prompt={})", stubMode, prompt);
-
+        log.info("agent_request start stubMode={} prompt={}", stubMode, prompt);
         if (stubMode) {
             return stubDraft(parsed, prompt);
         }
+
         List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
         FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
-        Map<String, String> links = Map.of(
-                "amazon", amazon.searchLink(parsed.item()),
-                "fisher", fisher.searchLink(parsed.item()),
-                "homedepot", homeDepot.searchLink(parsed.item())
-        );
+        Map<String, String> links = buildSearchLinks(parsed.item());
 
-        Map<String, List<SupplierResult>> results = new HashMap<>();
-        java.util.ArrayList<String> warnings = new java.util.ArrayList<>();
-        searchSupplier("amazon", amazon, parsed.item(), results, warnings);
-        searchSupplier("fisher", fisher, parsed.item(), results, warnings);
-        searchSupplier("homedepot", homeDepot, parsed.item(), results, warnings);
+        Map<String, List<SupplierSearchResult>> results = new LinkedHashMap<>();
+        Map<String, SupplierDebug> debug = new LinkedHashMap<>();
+        ArrayList<String> warnings = new ArrayList<>();
+
+        try {
+            CompletableFuture.allOf(supplierClients.stream()
+                    .map(client -> CompletableFuture.runAsync(() -> searchSupplier(client, parsed.item(), links, results, warnings, debug)))
+                    .toArray(CompletableFuture[]::new))
+                    .orTimeout(15, TimeUnit.SECONDS)
+                    .join();
+        } catch (Exception ex) {
+            warnings.add("Supplier search timed out; showing links only where needed.");
+            log.warn("agent_request supplier aggregation timed out", ex);
+        }
+
+        for (SupplierSearchClient client : supplierClients) {
+            results.putIfAbsent(client.supplierKey(), List.of());
+            debug.putIfAbsent(client.supplierKey(), new SupplierDebug(0, true, "linkOnly", "timed out"));
+        }
 
         RequisitionLine prefilled = choosePrefillLine(parsed, results);
-        DraftPayload draft = new DraftPayload(
-                titleFrom(parsed),
-                prompt,
-                "USD",
-                prefilled == null ? List.of() : List.of(prefilled)
-        );
+        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", prefilled == null ? List.of() : List.of(prefilled));
 
-        AgentDraftResponse response = new AgentDraftResponse(parsed, suggested, links, results, draft, warnings);
-        log.info("Agent draft request finished (lines={}, warnings={})", response.draft().lines().size(), warnings.size());
-        return response;
+        long elapsed = System.currentTimeMillis() - started;
+        log.info("agent_request end elapsedMs={} warnings={} lines={}", elapsed, warnings.size(), draft.lines().size());
+        return new AgentDraftResponse(parsed, suggested, links, results, warnings, debug, draft);
+    }
+
+    private synchronized void searchSupplier(SupplierSearchClient client,
+                                             String keywords,
+                                             Map<String, String> links,
+                                             Map<String, List<SupplierSearchResult>> resultsSink,
+                                             List<String> globalWarnings,
+                                             Map<String, SupplierDebug> debugSink) {
+        long start = System.currentTimeMillis();
+        String reason = "";
+        String source = "playwright";
+        boolean blocked = false;
+        List<SupplierSearchResult> results = List.of();
+        ArrayList<String> warnings = new ArrayList<>();
+
+        try {
+            SupplierSearchOutcome outcome = client.search(SupplierSearchQuery.of(keywords));
+            warnings.addAll(outcome.warnings());
+            blocked = outcome.blockedOrFailed();
+            results = outcome.results();
+
+            if (outcome.blockedOrFailed() || outcome.results().isEmpty()) {
+                List<SupplierSearchResult> fallback = fallbackSiteSearch(client, keywords);
+                if (!fallback.isEmpty()) {
+                    source = "searchProvider";
+                    results = fallback;
+                    warnings.add("Using search provider results (site search); prices may be unavailable.");
+                    blocked = false;
+                } else {
+                    source = "linkOnly";
+                    warnings.add("Automated fetch blocked; open search link.");
+                    blocked = true;
+                }
+            }
+        } catch (Exception ex) {
+            source = "linkOnly";
+            blocked = true;
+            reason = ex.getMessage();
+            warnings.add("Failed to fetch " + client.supplierName() + " results.");
+            log.warn("agent_supplier_error supplier={} reason={}", client.supplierKey(), reason, ex);
+        }
+
+        long elapsed = System.currentTimeMillis() - start;
+        synchronized (resultsSink) {
+            resultsSink.put(client.supplierKey(), results);
+        }
+        synchronized (globalWarnings) {
+            globalWarnings.addAll(warnings.stream().map(w -> client.supplierName() + ": " + w).toList());
+        }
+        synchronized (debugSink) {
+            debugSink.put(client.supplierKey(), new SupplierDebug(elapsed, blocked, source, reason));
+        }
+        log.info("agent_supplier supplier={} source={} elapsedMs={} blocked={} warnings={}", client.supplierKey(), source, elapsed, blocked, warnings.size());
+    }
+
+    private List<SupplierSearchResult> fallbackSiteSearch(SupplierSearchClient client, String keywords) {
+        if (!properties.hasSearchKey()) {
+            return List.of();
+        }
+        String query = "site:" + switch (client.supplierKey()) {
+            case "amazon" -> "amazon.com " + keywords + " beaker";
+            case "fisher" -> "fishersci.com " + keywords;
+            case "homedepot" -> "homedepot.com " + keywords;
+            default -> keywords;
+        };
+        return searchProviderClient.searchWeb(query, 5).stream()
+                .map(r -> new SupplierSearchResult(client.supplierName(), r.title(), r.url(), null, null, r.snippet()))
+                .toList();
     }
 
     private AgentDraftResponse stubDraft(PromptParser.ParsedPrompt parsed, String prompt) {
         List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
         FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
+        Map<String, String> links = buildSearchLinks(parsed.item());
 
-        Map<String, String> links = new HashMap<>();
-        links.put("amazon", amazon.searchLink(parsed.item()));
-        links.put("fisher", fisher.searchLink(parsed.item()));
-        links.put("homedepot", homeDepot.searchLink(parsed.item()));
-
-        SupplierResult sample = new SupplierResult(
-                "Stub Supplier",
-                parsed.item().isBlank() ? "Lab supply starter pack" : "Stub result: " + parsed.item(),
-                19.99,
-                "STUB-001",
-                "https://example.com/stub-item",
-                "STUB-001"
+        Map<String, List<SupplierSearchResult>> results = Map.of(
+                "amazon", List.of(stubResult("Amazon", parsed.item(), "https://www.amazon.com/s?k=beaker"), stubResult("Amazon", "Glass Beaker Set", "https://www.amazon.com/s?k=glass+beaker")),
+                "fisher", List.of(stubResult("Fisher Scientific", parsed.item(), "https://www.fishersci.com/us/en/catalog/search/products?keyword=beaker"), stubResult("Fisher Scientific", "Class A Beaker", "https://www.fishersci.com/us/en/catalog/search/products?keyword=class+a+beaker")),
+                "homedepot", List.of(stubResult("Home Depot", parsed.item(), "https://www.homedepot.com/s/beaker"), stubResult("Home Depot", "Lab Glassware", "https://www.homedepot.com/s/glassware"))
+        );
+        Map<String, SupplierDebug> debug = Map.of(
+                "amazon", new SupplierDebug(10, false, "playwright", ""),
+                "fisher", new SupplierDebug(12, false, "playwright", ""),
+                "homedepot", new SupplierDebug(15, false, "playwright", "")
         );
 
-        Map<String, List<SupplierResult>> results = new HashMap<>();
-        results.put("amazon", List.of(sample));
-        results.put("fisher", List.of(sample));
-        results.put("homedepot", List.of(sample));
-
-        RequisitionLine line = new RequisitionLine();
-        line.setLineNumber(1);
-        line.setDescription(sample.title());
-        line.setQuantity(parsed.quantity());
-        line.setUom(parsed.uom());
-        line.setUnitPrice(sample.price());
-        line.setAmount(sample.price() * parsed.quantity());
-        line.setSupplierName(sample.supplier());
-        line.setSupplierUrl(sample.url());
-        line.setSupplierSku(sample.sku());
-
-        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", List.of(line));
-        java.util.ArrayList<String> warnings = new java.util.ArrayList<>();
-        warnings.add("Stub mode enabled: returning canned supplier results.");
-        AgentDraftResponse response = new AgentDraftResponse(parsed, suggested, links, results, draft, warnings);
-        log.info("Agent draft stub response generated (lines={})", response.draft().lines().size());
-        return response;
+        RequisitionLine line = choosePrefillLine(parsed, results);
+        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", line == null ? List.of() : List.of(line));
+        return new AgentDraftResponse(parsed, suggested, links, results, List.of("Stub mode enabled: returning canned supplier results."), debug, draft);
     }
 
-    private void searchSupplier(String key, SupplierSearchClient client, String query, Map<String, List<SupplierResult>> sink, List<String> warnings) {
-        try {
-            log.info("Searching supplier {} with query [{}]", client.supplierName(), query);
-            List<SupplierResult> direct = client.search(query);
-            if (!direct.isEmpty()) {
-                sink.put(key, direct);
-                log.info("Supplier {} returned {} direct results", client.supplierName(), direct.size());
-                return;
-            }
-
-            List<SupplierResult> fallback = searchViaWeb(key, client.supplierName(), query);
-            sink.put(key, fallback);
-            if (fallback.isEmpty()) {
-                warnings.add("Could not fetch " + client.supplierName() + " results; open search link.");
-                log.warn("Supplier {} fallback search returned no results", client.supplierName());
-            } else {
-                warnings.add("Using fallback web search for " + client.supplierName() + " results.");
-                log.info("Supplier {} fallback returned {} results", client.supplierName(), fallback.size());
-            }
-        } catch (Exception ex) {
-            sink.put(key, List.of());
-            warnings.add("Failed to fetch " + client.supplierName() + " results: " + ex.getMessage());
-            log.warn("Supplier {} failed", client.supplierName(), ex);
-        }
+    private SupplierSearchResult stubResult(String supplier, String item, String url) {
+        return new SupplierSearchResult(supplier, "Stub result: " + item, url, BigDecimal.valueOf(19.99), "STUB-001", "stub snippet");
     }
 
-    private List<SupplierResult> searchViaWeb(String supplierKey, String supplierName, String query) {
-        String domain = switch (supplierKey) {
-            case "amazon" -> "amazon.com";
-            case "fisher" -> "fishersci.com";
-            case "homedepot" -> "homedepot.com";
-            default -> "";
-        };
-        if (domain.isBlank()) {
-            return List.of();
-        }
-
-        String encoded = URLEncoder.encode("site:" + domain + " " + query, StandardCharsets.UTF_8);
-        String html = htmlFetcher.fetch("https://duckduckgo.com/html/?q=" + encoded);
-        Document doc = Jsoup.parse(html);
-
-        java.util.ArrayList<SupplierResult> results = new java.util.ArrayList<>();
-        for (Element item : doc.select(".result").stream().limit(5).toList()) {
-            Element link = item.selectFirst("a.result__a");
-            if (link == null) {
-                continue;
-            }
-            String title = link.text();
-            String href = link.absUrl("href");
-            if (href.isBlank()) {
-                href = link.attr("href");
-            }
-            String snippet = item.text();
-            results.add(new SupplierResult(
-                    supplierName,
-                    title,
-                    extractPrice(snippet),
-                    null,
-                    href,
-                    extractSku(snippet)
-            ));
-        }
-        return results;
+    private Map<String, String> buildSearchLinks(String keywords) {
+        Map<String, String> links = new LinkedHashMap<>();
+        supplierClients.forEach(client -> links.put(client.supplierKey(), client.searchLink(keywords)));
+        return links;
     }
 
     private FundingService.ChargingLocationDto suggestCharging(PromptParser.ParsedPrompt parsed, List<FundingService.ChargingLocationDto> eligible) {
@@ -201,35 +205,31 @@ public class AgentSearchService {
         return 10;
     }
 
-    private RequisitionLine choosePrefillLine(PromptParser.ParsedPrompt parsed, Map<String, List<SupplierResult>> results) {
-        SupplierResult chosen = results.getOrDefault("fisher", List.of()).stream().findFirst()
+    private RequisitionLine choosePrefillLine(PromptParser.ParsedPrompt parsed, Map<String, List<SupplierSearchResult>> results) {
+        SupplierSearchResult chosen = results.getOrDefault("fisher", List.of()).stream().findFirst()
                 .or(() -> results.getOrDefault("homedepot", List.of()).stream().findFirst())
                 .or(() -> results.getOrDefault("amazon", List.of()).stream().findFirst())
                 .orElse(null);
-        if (chosen == null) {
-            return null;
-        }
+        if (chosen == null) return null;
         RequisitionLine line = new RequisitionLine();
         line.setLineNumber(1);
         line.setDescription(chosen.title());
         line.setQuantity(parsed.quantity());
         line.setUom(parsed.uom());
-        line.setUnitPrice(chosen.price());
-        line.setAmount(chosen.price() == null ? 0 : chosen.price() * parsed.quantity());
-        line.setSupplierName(chosen.supplier());
+        line.setUnitPrice(chosen.price() == null ? null : chosen.price().doubleValue());
+        line.setAmount((chosen.price() == null ? BigDecimal.ZERO : chosen.price()).doubleValue() * parsed.quantity());
+        line.setSupplierName(chosen.supplierName());
         line.setSupplierUrl(chosen.url());
         line.setSupplierSku(chosen.sku());
         return line;
     }
 
-    private String titleFrom(PromptParser.ParsedPrompt parsed) {
-        return "Requisition - " + parsed.item();
-    }
+    private String titleFrom(PromptParser.ParsedPrompt parsed) { return "Requisition - " + parsed.item(); }
 
-    public static Double extractPrice(String text) {
+    public static BigDecimal extractPrice(String text) {
         Matcher matcher = PRICE_PATTERN.matcher(text == null ? "" : text);
         if (!matcher.find()) return null;
-        return Double.parseDouble(matcher.group(1).replace(",", ""));
+        return BigDecimal.valueOf(Double.parseDouble(matcher.group(1).replace(",", "")));
     }
 
     public static String extractSku(String text) {
@@ -238,11 +238,13 @@ public class AgentSearchService {
     }
 
     public record DraftPayload(String title, String memo, String currency, List<RequisitionLine> lines) {}
-
+    public record SupplierDebug(long elapsedMs, boolean blockedOrFailed, String source, String reason) {}
+    public record CapabilitiesResponse(boolean playwrightEnabled, String searchProvider, boolean hasSearchKey) {}
     public record AgentDraftResponse(PromptParser.ParsedPrompt parsed,
                                      FundingService.ChargingLocationDto suggestedChargingDimension,
                                      Map<String, String> searchLinks,
-                                     Map<String, List<SupplierResult>> results,
-                                     DraftPayload draft,
-                                     List<String> warnings) {}
+                                     Map<String, List<SupplierSearchResult>> results,
+                                     List<String> warnings,
+                                     Map<String, SupplierDebug> debug,
+                                     DraftPayload draft) {}
 }

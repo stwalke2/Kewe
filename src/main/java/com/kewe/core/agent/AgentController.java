@@ -23,10 +23,13 @@ public class AgentController {
         return searchService.createDraft(request.prompt(), "stub".equalsIgnoreCase(mode));
     }
 
-    @GetMapping("/ping")
-    public String ping() {
-        return "ok";
+    @GetMapping("/capabilities")
+    public AgentSearchService.CapabilitiesResponse capabilities() {
+        return searchService.capabilities();
     }
+
+    @GetMapping("/ping")
+    public String ping() { return "ok"; }
 
     public record AgentPromptRequest(@NotBlank String prompt) {}
 }
