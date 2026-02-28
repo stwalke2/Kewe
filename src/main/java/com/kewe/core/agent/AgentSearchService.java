@@ -2,8 +2,13 @@ package com.kewe.core.agent;
 
 import com.kewe.core.funding.FundingService;
 import com.kewe.core.requisition.RequisitionLine;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -19,17 +24,20 @@ public class AgentSearchService {
 
     private final PromptParser parser;
     private final FundingService fundingService;
+    private final HtmlFetcher htmlFetcher;
     private final AmazonSearchClient amazon;
     private final FisherSearchClient fisher;
     private final HomeDepotSearchClient homeDepot;
 
     public AgentSearchService(PromptParser parser,
                               FundingService fundingService,
+                              HtmlFetcher htmlFetcher,
                               AmazonSearchClient amazon,
                               FisherSearchClient fisher,
                               HomeDepotSearchClient homeDepot) {
         this.parser = parser;
         this.fundingService = fundingService;
+        this.htmlFetcher = htmlFetcher;
         this.amazon = amazon;
         this.fisher = fisher;
         this.homeDepot = homeDepot;
@@ -64,14 +72,62 @@ public class AgentSearchService {
 
     private void searchSupplier(String key, SupplierSearchClient client, String query, Map<String, List<SupplierResult>> sink, List<String> warnings) {
         try {
-            sink.put(key, client.search(query));
-            if ("amazon".equals(key) && sink.get(key).isEmpty()) {
-                warnings.add("Could not fetch Amazon results; open search link.");
+            List<SupplierResult> direct = client.search(query);
+            if (!direct.isEmpty()) {
+                sink.put(key, direct);
+                return;
+            }
+
+            List<SupplierResult> fallback = searchViaWeb(key, client.supplierName(), query);
+            sink.put(key, fallback);
+            if (fallback.isEmpty()) {
+                warnings.add("Could not fetch " + client.supplierName() + " results; open search link.");
+            } else {
+                warnings.add("Using fallback web search for " + client.supplierName() + " results.");
             }
         } catch (Exception ex) {
             sink.put(key, List.of());
             warnings.add("Failed to fetch " + client.supplierName() + " results: " + ex.getMessage());
         }
+    }
+
+    private List<SupplierResult> searchViaWeb(String supplierKey, String supplierName, String query) {
+        String domain = switch (supplierKey) {
+            case "amazon" -> "amazon.com";
+            case "fisher" -> "fishersci.com";
+            case "homedepot" -> "homedepot.com";
+            default -> "";
+        };
+        if (domain.isBlank()) {
+            return List.of();
+        }
+
+        String encoded = URLEncoder.encode("site:" + domain + " " + query, StandardCharsets.UTF_8);
+        String html = htmlFetcher.fetch("https://duckduckgo.com/html/?q=" + encoded);
+        Document doc = Jsoup.parse(html);
+
+        java.util.ArrayList<SupplierResult> results = new java.util.ArrayList<>();
+        for (Element item : doc.select(".result").stream().limit(5).toList()) {
+            Element link = item.selectFirst("a.result__a");
+            if (link == null) {
+                continue;
+            }
+            String title = link.text();
+            String href = link.absUrl("href");
+            if (href.isBlank()) {
+                href = link.attr("href");
+            }
+            String snippet = item.text();
+            results.add(new SupplierResult(
+                    supplierName,
+                    title,
+                    extractPrice(snippet),
+                    null,
+                    href,
+                    extractSku(snippet)
+            ));
+        }
+        return results;
     }
 
     private FundingService.ChargingLocationDto suggestCharging(PromptParser.ParsedPrompt parsed, List<FundingService.ChargingLocationDto> eligible) {

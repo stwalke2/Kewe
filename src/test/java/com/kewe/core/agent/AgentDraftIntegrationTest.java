@@ -82,6 +82,7 @@ class AgentDraftIntegrationTest {
         when(htmlFetcher.fetch(contains("fishersci"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/fisher-search.html")));
         when(htmlFetcher.fetch(contains("homedepot"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/homedepot-search.html")));
         when(htmlFetcher.fetch(contains("amazon"))).thenReturn("<html><body>blocked</body></html>");
+        when(htmlFetcher.fetch(contains("duckduckgo.com"))).thenReturn(Files.readString(Path.of("src/test/resources/fixtures/ddg-amazon-search.html")));
     }
 
     @Test
@@ -94,6 +95,8 @@ class AgentDraftIntegrationTest {
                 .andExpect(jsonPath("$.suggestedChargingDimension.code").value("CC0001"))
                 .andExpect(jsonPath("$.results.fisher").isArray())
                 .andExpect(jsonPath("$.results.homedepot").isArray())
+                .andExpect(jsonPath("$.results.amazon[0].title").value("Amazon.com: glass beaker results"))
+                .andExpect(jsonPath("$.draft.lines[0].supplierName").exists())
                 .andExpect(jsonPath("$.searchLinks.amazon").exists());
     }
 }

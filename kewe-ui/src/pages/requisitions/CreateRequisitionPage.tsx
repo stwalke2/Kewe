@@ -2,13 +2,53 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   agentDraftRequisition,
   createRequisitionDraft,
+  fetchBusinessObjects,
   fetchChargingLocations,
   fetchFundingSnapshot,
   updateRequisitionDraft,
 } from '../../api';
-import type { ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
+import type { BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
 
 const SUPPLIERS = ['amazon', 'fisher', 'homedepot'] as const;
+
+type StoredBudgetRow = {
+  businessDimensionId?: string;
+  allocations?: Array<{ businessDimensionId?: string }>;
+};
+
+const BUDGETS_STORAGE_KEY = 'kewe.budgets';
+
+function loadBudgetScreenDimensionIds(): string[] {
+  if (typeof window === 'undefined') return [];
+
+  const raw = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
+  if (!raw) return [];
+
+  try {
+    const parsed = JSON.parse(raw) as StoredBudgetRow[];
+    if (!Array.isArray(parsed)) return [];
+    const ids = new Set<string>();
+    parsed.forEach((budget) => {
+      if (budget.businessDimensionId) ids.add(budget.businessDimensionId);
+      (budget.allocations ?? []).forEach((allocation) => {
+        if (allocation.businessDimensionId) ids.add(allocation.businessDimensionId);
+      });
+    });
+    return [...ids];
+  } catch {
+    return [];
+  }
+}
+
+function toChargingLocation(item: BusinessObjectInstance): ChargingLocation {
+  return {
+    id: item.id,
+    code: item.code,
+    name: item.name,
+    typeName: item.typeCode,
+    status: item.status,
+  };
+}
 
 export function CreateRequisitionPage() {
   const [draft, setDraft] = useState<RequisitionDraft | null>(null);
@@ -23,8 +63,34 @@ export function CreateRequisitionPage() {
 
   useEffect(() => {
     void createRequisitionDraft().then(setDraft);
-    void fetchChargingLocations().then(setChargingLocations);
+    void loadChargingLocations();
   }, []);
+
+  async function loadChargingLocations() {
+    try {
+      const [backendLocations, objects] = await Promise.all([
+        fetchChargingLocations(),
+        fetchBusinessObjects(),
+      ]);
+
+      const budgetDimensionIds = new Set(loadBudgetScreenDimensionIds());
+      const budgetLocations = objects
+        .filter((item) => budgetDimensionIds.has(item.id))
+        .map(toChargingLocation);
+
+      const merged = new Map<string, ChargingLocation>();
+      [...backendLocations, ...budgetLocations].forEach((location) => {
+        merged.set(location.id, location);
+      });
+
+      setChargingLocations([...merged.values()].sort((left, right) =>
+        `${left.typeName} ${left.code} ${left.name}`.localeCompare(`${right.typeName} ${right.code} ${right.name}`),
+      ));
+    } catch {
+      const fallback = await fetchChargingLocations();
+      setChargingLocations(fallback);
+    }
+  }
 
   const subtotal = useMemo(() => draft?.lines.reduce((sum, line) => sum + (line.amount || 0), 0) ?? 0, [draft]);
 
