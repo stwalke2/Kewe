@@ -203,9 +203,8 @@ export interface SupplierDebug {
 }
 
 export interface AgentCapabilities {
-  playwrightEnabled: boolean;
-  searchProvider: 'none' | 'serpapi' | 'bing';
-  hasSearchKey: boolean;
+  provider: 'bing' | string;
+  hasKey: boolean;
 }
 
 export interface AgentDraftResponse {
@@ -215,19 +214,16 @@ export interface AgentDraftResponse {
   results: Record<string, SupplierResult[]>;
   draft: { title: string; memo: string; currency: string; lines: RequisitionLine[] };
   warnings: string[];
-  debug: Record<string, SupplierDebug>;
 }
 
 export interface FundingSnapshot {
   chargingDimension?: ChargingLocation;
-  budget?: { id: string; budgetPlanId?: string; budgetPlanName?: string; amount: number };
-  allocationsFrom: Array<{ id: string; allocatedDimension?: ChargingLocation; amount: number }>;
-  allocationsTo: Array<{ id: string; allocatedDimension?: ChargingLocation; amount: number }>;
+  budgetPlan?: { id: string; name: string };
+  budget?: { id: string; amount: number };
+  allocationsFrom: Array<{ id: string; allocatedTo?: ChargingLocation; amount: number }>;
   totals: {
     budgetTotal?: number;
     allocatedFromTotal: number;
-    allocatedToTotal: number;
-    requisitionTotal: number;
-    remainingIfBudget?: number;
+    remainingBeforeReq?: number;
   };
 }

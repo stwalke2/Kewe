@@ -3,18 +3,18 @@ import {
   agentDraftRequisition,
   createRequisitionDraft,
   fetchAgentCapabilities,
-  fetchBusinessObjects,
   fetchChargingLocations,
   fetchFundingSnapshot,
   updateRequisitionDraft,
 } from '../../api';
-import type { AgentCapabilities, BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierDebug, SupplierResult } from '../../api/types';
+import type { AgentCapabilities, ChargingLocation, FundingSnapshot, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
 
 const SUPPLIERS = ['amazon', 'fisher', 'homedepot'] as const;
-const BUDGETS_STORAGE_KEY = 'kewe.budgets';
 
-type StoredAllocation = { businessDimensionId?: string };
-type StoredBudget = { businessDimensionId?: string; allocations?: StoredAllocation[] };
+function formatMoney(value?: number): string {
+  if (value === undefined || value === null) return '—';
+  return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
 
 export function CreateRequisitionPage() {
   const [draft, setDraft] = useState<RequisitionDraft | null>(null);
@@ -23,60 +23,23 @@ export function CreateRequisitionPage() {
   const [results, setResults] = useState<Record<string, SupplierResult[]>>({ amazon: [], fisher: [], homedepot: [] });
   const [links, setLinks] = useState<Record<string, string>>({});
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [debug, setDebug] = useState<Record<string, SupplierDebug>>({});
   const [activeSupplier, setActiveSupplier] = useState<(typeof SUPPLIERS)[number]>('fisher');
   const [chargingLocations, setChargingLocations] = useState<ChargingLocation[]>([]);
-  const [funding, setFunding] = useState<any>(null);
+  const [funding, setFunding] = useState<FundingSnapshot | null>(null);
   const [stubMode, setStubMode] = useState(false);
   const [capabilities, setCapabilities] = useState<AgentCapabilities | null>(null);
+  const [parsedQuantity, setParsedQuantity] = useState(1);
 
   useEffect(() => {
-    void createRequisitionDraft().then(setDraft);
-    void loadChargingLocations();
+    void createRequisitionDraft().then((nextDraft) => {
+      setDraft(nextDraft);
+      if (!nextDraft.budgetPlanId) {
+        setDraft({ ...nextDraft, budgetPlanId: 'FY26 Operating' });
+      }
+    });
+    void fetchChargingLocations().then(setChargingLocations);
     void fetchAgentCapabilities().then(setCapabilities).catch(() => setCapabilities(null));
   }, []);
-
-  async function loadChargingLocations() {
-    const [backendLocations, budgetDimensionIds] = await Promise.all([
-      fetchChargingLocations(),
-      loadBudgetDimensionIds(),
-    ]);
-    const locationById = new Map(backendLocations.map((location) => [location.id, location]));
-    const missingBudgetIds = budgetDimensionIds.filter((id) => !locationById.has(id));
-    if (missingBudgetIds.length > 0) {
-      try {
-        const businessDimensions = await fetchBusinessObjects();
-        businessDimensions.filter((dimension) => missingBudgetIds.includes(dimension.id)).forEach((dimension) => {
-          locationById.set(dimension.id, toChargingLocation(dimension));
-        });
-      } catch {
-        // ignore
-      }
-    }
-    const allowedIds = new Set([...backendLocations.map((location) => location.id), ...budgetDimensionIds]);
-    const mergedLocations = [...locationById.values()]
-      .filter((location) => allowedIds.has(location.id))
-      .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
-    setChargingLocations(mergedLocations);
-  }
-
-  async function loadBudgetDimensionIds(): Promise<string[]> {
-    if (typeof window === 'undefined') return [];
-    const rawBudgets = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
-    if (!rawBudgets) return [];
-    try {
-      const parsedBudgets = JSON.parse(rawBudgets);
-      if (!Array.isArray(parsedBudgets)) return [];
-      const ids = new Set<string>();
-      (parsedBudgets as StoredBudget[]).forEach((budget) => {
-        if (budget.businessDimensionId) ids.add(budget.businessDimensionId);
-        budget.allocations?.forEach((allocation) => allocation.businessDimensionId && ids.add(allocation.businessDimensionId));
-      });
-      return [...ids];
-    } catch {
-      return [];
-    }
-  }
 
   const subtotal = useMemo(() => draft?.lines.reduce((sum, line) => sum + (line.amount || 0), 0) ?? 0, [draft]);
 
@@ -87,9 +50,12 @@ export function CreateRequisitionPage() {
   }, [draft, subtotal]);
 
   useEffect(() => {
-    if (!draft?.chargingBusinessDimensionId) return;
-    void fetchFundingSnapshot(draft.chargingBusinessDimensionId, draft.budgetPlanId, subtotal).then(setFunding);
-  }, [draft?.chargingBusinessDimensionId, draft?.budgetPlanId, subtotal]);
+    if (!draft?.chargingBusinessDimensionId) {
+      setFunding(null);
+      return;
+    }
+    void fetchFundingSnapshot(draft.chargingBusinessDimensionId, draft.budgetPlanId).then(setFunding);
+  }, [draft?.chargingBusinessDimensionId, draft?.budgetPlanId]);
 
   async function runAgent() {
     if (!prompt.trim() || !draft) return;
@@ -100,7 +66,7 @@ export function CreateRequisitionPage() {
       setResults(response.results);
       setLinks(response.searchLinks);
       setWarnings(response.warnings);
-      setDebug(response.debug || {});
+      setParsedQuantity(response.parsed.quantity || 1);
       setDraft({
         ...draft,
         title: response.draft.title,
@@ -115,7 +81,6 @@ export function CreateRequisitionPage() {
       setWarnings(['Could not draft requisition. Verify backend is running and retry.']);
       setResults({ amazon: [], fisher: [], homedepot: [] });
       setLinks({});
-      setDebug({});
     } finally {
       setStatus(null);
     }
@@ -123,26 +88,18 @@ export function CreateRequisitionPage() {
 
   function addResult(result: SupplierResult) {
     if (!draft) return;
-    const existing = draft.lines.find((line) => line.supplierSku && line.supplierSku === result.sku && line.supplierName === result.supplierName);
-    let lines: RequisitionLine[];
-    if (existing) {
-      lines = draft.lines.map((line) => line === existing
-        ? { ...line, quantity: line.quantity + 1, amount: (line.quantity + 1) * (line.unitPrice ?? 0) }
-        : line);
-    } else {
-      const unitPrice = result.price ?? 0;
-      lines = [...draft.lines, {
-        lineNumber: draft.lines.length + 1,
-        description: result.title,
-        quantity: 1,
-        uom: 'ea',
-        unitPrice,
-        amount: unitPrice,
-        supplierName: result.supplierName,
-        supplierUrl: result.url,
-        supplierSku: result.sku,
-      }];
-    }
+    const unitPrice = result.price ?? 0;
+    const lines: RequisitionLine[] = [...draft.lines, {
+      lineNumber: draft.lines.length + 1,
+      description: result.title,
+      quantity: parsedQuantity,
+      uom: 'ea',
+      unitPrice,
+      amount: unitPrice * parsedQuantity,
+      supplierName: result.supplierName,
+      supplierUrl: result.url,
+      supplierSku: result.sku,
+    }];
     setDraft({ ...draft, lines });
   }
 
@@ -157,7 +114,7 @@ export function CreateRequisitionPage() {
         <button type="button" className="secondary" onClick={() => setDraft({ ...draft, lines: [] })}>Clear Draft</button>
       </div>
       <label><input type="checkbox" checked={stubMode} onChange={(e) => setStubMode(e.target.checked)} /> Use stub results (dev)</label>
-      {capabilities && <p>Capabilities: Playwright {String(capabilities.playwrightEnabled)} • Provider {capabilities.searchProvider} • Key {String(capabilities.hasSearchKey)}</p>}
+      {capabilities && <p>Capabilities: Provider {capabilities.provider} • Key {String(capabilities.hasKey)}</p>}
       {status && <p>{status}</p>}
       {warnings.map((warning) => <p key={warning} className="text-danger">{warning}</p>)}
 
@@ -165,7 +122,6 @@ export function CreateRequisitionPage() {
         <section>
           <h3>Results</h3>
           <div className="pill-row">{SUPPLIERS.map((s) => <button key={s} type="button" className={activeSupplier === s ? 'active' : ''} onClick={() => setActiveSupplier(s)}>{s}</button>)}</div>
-          <p>Source: {debug[activeSupplier]?.source ?? 'linkOnly'}</p>
           {(results[activeSupplier] ?? []).map((result) => (
             <div className="card" key={`${result.supplierName}-${result.url}`}>
               <strong>{result.title}</strong>
@@ -187,15 +143,33 @@ export function CreateRequisitionPage() {
         <section>
           <h3>Funding Snapshot</h3>
           <label>Charging Location</label>
-          <select value={draft.chargingBusinessDimensionId ?? ''} onChange={(e) => setDraft({ ...draft, chargingBusinessDimensionId: e.target.value })}>
+          <select
+            value={draft.chargingBusinessDimensionId ?? ''}
+            onChange={(e) => {
+              const selected = chargingLocations.find((item) => item.id === e.target.value);
+              setDraft({
+                ...draft,
+                chargingBusinessDimensionId: selected?.id,
+                chargingBusinessDimensionCode: selected?.code,
+                chargingBusinessDimensionName: selected?.name,
+              });
+            }}
+          >
             <option value="">Select charging location</option>
             {chargingLocations.map((c) => <option key={c.id} value={c.id}>{`${c.code} ${c.name}`}</option>)}
           </select>
           <label>Budget Plan</label>
-          <input value={draft.budgetPlanId ?? 'FY26-OPERATING'} onChange={(e) => setDraft({ ...draft, budgetPlanId: e.target.value })} />
-          <div>Budget Total: {funding?.totals?.budgetTotal ?? '—'}</div>
-          <div>Allocated: {funding?.totals?.allocatedFromTotal ?? 0}</div>
-          <div>After this req: {funding?.totals?.remainingIfBudget ?? 'No budget found for this charging location in this plan'}</div>
+          <input value={draft.budgetPlanId ?? ''} onChange={(e) => setDraft({ ...draft, budgetPlanId: e.target.value })} placeholder="FY26 Operating" />
+          <div>Budget Total: {formatMoney(funding?.totals?.budgetTotal)}</div>
+          <div>Allocated: {formatMoney(funding?.totals?.allocatedFromTotal)}</div>
+          <div>Remaining (before req): {formatMoney(funding?.totals?.remainingBeforeReq)}</div>
+          {funding?.allocationsFrom?.length ? (
+            <ul>
+              {funding.allocationsFrom.map((allocation) => (
+                <li key={allocation.id}>{allocation.allocatedTo?.code} — {allocation.allocatedTo?.name}: {formatMoney(allocation.amount)}</li>
+              ))}
+            </ul>
+          ) : <p>No allocations from this charging dimension.</p>}
         </section>
       </div>
 
@@ -232,14 +206,4 @@ export function CreateRequisitionPage() {
       <strong>Subtotal: ${subtotal.toFixed(2)}</strong>
     </div>
   );
-}
-
-function toChargingLocation(dimension: BusinessObjectInstance): ChargingLocation {
-  return {
-    id: dimension.id,
-    code: dimension.code,
-    name: dimension.name,
-    typeName: dimension.typeCode,
-    status: dimension.status,
-  };
 }

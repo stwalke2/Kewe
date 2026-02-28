@@ -28,10 +28,9 @@ public class FundingController {
     }
 
     @GetMapping("/funding-snapshot")
-    public FundingService.FundingSnapshotDto fundingSnapshot(@RequestParam String chargingDimensionId,
-                                                             @RequestParam(required = false) String budgetPlanId,
-                                                             @RequestParam(defaultValue = "0") double requisitionTotal) {
-        return fundingService.fundingSnapshot(chargingDimensionId, budgetPlanId, requisitionTotal);
+    public FundingService.FundingSnapshotResponse fundingSnapshot(@RequestParam String chargingDimensionId,
+                                                                  @RequestParam(required = false) String budgetPlan) {
+        return fundingService.fundingSnapshot(chargingDimensionId, budgetPlan);
     }
 
     @GetMapping("/budgets")

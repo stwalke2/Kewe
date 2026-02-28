@@ -244,8 +244,8 @@ export async function fetchChargingLocations(budgetPlanId?: string) {
   return request<import('./api/types').ChargingLocation[]>(`/charging-locations${budgetPlanId ? `?budgetPlanId=${encodeURIComponent(budgetPlanId)}` : ''}`);
 }
 
-export async function fetchFundingSnapshot(chargingDimensionId: string, budgetPlanId: string | undefined, requisitionTotal: number) {
-  const query = new URLSearchParams({ chargingDimensionId, requisitionTotal: String(requisitionTotal) });
-  if (budgetPlanId) query.set('budgetPlanId', budgetPlanId);
+export async function fetchFundingSnapshot(chargingDimensionId: string, budgetPlan: string | undefined) {
+  const query = new URLSearchParams({ chargingDimensionId });
+  if (budgetPlan) query.set('budgetPlan', budgetPlan);
   return request<import('./api/types').FundingSnapshot>(`/funding-snapshot?${query.toString()}`);
 }
