@@ -2,13 +2,18 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   agentDraftRequisition,
   createRequisitionDraft,
+  fetchBusinessObjects,
   fetchChargingLocations,
   fetchFundingSnapshot,
   updateRequisitionDraft,
 } from '../../api';
-import type { ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
+import type { BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
 
 const SUPPLIERS = ['amazon', 'fisher', 'homedepot'] as const;
+const BUDGETS_STORAGE_KEY = 'kewe.budgets';
+
+type StoredAllocation = { businessDimensionId?: string };
+type StoredBudget = { businessDimensionId?: string; allocations?: StoredAllocation[] };
 
 export function CreateRequisitionPage() {
   const [draft, setDraft] = useState<RequisitionDraft | null>(null);
@@ -27,10 +32,67 @@ export function CreateRequisitionPage() {
   }, []);
 
   async function loadChargingLocations() {
-    const backendLocations = await fetchChargingLocations();
-    setChargingLocations([...backendLocations].sort((left, right) =>
-      `${left.typeName} ${left.code} ${left.name}`.localeCompare(`${right.typeName} ${right.code} ${right.name}`),
-    ));
+    const [backendLocations, budgetDimensionIds] = await Promise.all([
+      fetchChargingLocations(),
+      loadBudgetDimensionIds(),
+    ]);
+
+    const locationById = new Map(backendLocations.map((location) => [location.id, location]));
+    const missingBudgetIds = budgetDimensionIds.filter((id) => !locationById.has(id));
+
+    if (missingBudgetIds.length > 0) {
+      try {
+        const businessDimensions = await fetchBusinessObjects();
+        businessDimensions
+          .filter((dimension) => missingBudgetIds.includes(dimension.id))
+          .forEach((dimension) => {
+            locationById.set(dimension.id, toChargingLocation(dimension));
+          });
+      } catch {
+        // Keep backend locations only when business dimensions cannot be loaded.
+      }
+    }
+
+    const allowedIds = new Set([...backendLocations.map((location) => location.id), ...budgetDimensionIds]);
+    const mergedLocations = [...locationById.values()]
+      .filter((location) => allowedIds.has(location.id))
+      .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
+
+    setChargingLocations(mergedLocations);
+  }
+
+  async function loadBudgetDimensionIds(): Promise<string[]> {
+    if (typeof window === 'undefined') {
+      return [];
+    }
+
+    const rawBudgets = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
+    if (!rawBudgets) {
+      return [];
+    }
+
+    try {
+      const parsedBudgets = JSON.parse(rawBudgets);
+      if (!Array.isArray(parsedBudgets)) {
+        return [];
+      }
+
+      const ids = new Set<string>();
+      (parsedBudgets as StoredBudget[]).forEach((budget) => {
+        if (budget.businessDimensionId) {
+          ids.add(budget.businessDimensionId);
+        }
+        budget.allocations?.forEach((allocation) => {
+          if (allocation.businessDimensionId) {
+            ids.add(allocation.businessDimensionId);
+          }
+        });
+      });
+
+      return [...ids];
+    } catch {
+      return [];
+    }
   }
 
   const subtotal = useMemo(() => draft?.lines.reduce((sum, line) => sum + (line.amount || 0), 0) ?? 0, [draft]);
@@ -135,7 +197,7 @@ export function CreateRequisitionPage() {
           <label>Charging Location</label>
           <select value={draft.chargingBusinessDimensionId ?? ''} onChange={(e) => setDraft({ ...draft, chargingBusinessDimensionId: e.target.value })}>
             <option value="">Select charging location</option>
-            {chargingLocations.map((c) => <option key={c.id} value={c.id}>{`${c.code} — ${c.name} · ${c.typeName}`}</option>)}
+            {chargingLocations.map((c) => <option key={c.id} value={c.id}>{`${c.code} ${c.name}`}</option>)}
           </select>
           <label>Budget Plan</label>
           <input value={draft.budgetPlanId ?? 'FY26-OPERATING'} onChange={(e) => setDraft({ ...draft, budgetPlanId: e.target.value })} />
@@ -178,4 +240,14 @@ export function CreateRequisitionPage() {
       <strong>Subtotal: ${subtotal.toFixed(2)}</strong>
     </div>
   );
+}
+
+function toChargingLocation(dimension: BusinessObjectInstance): ChargingLocation {
+  return {
+    id: dimension.id,
+    code: dimension.code,
+    name: dimension.name,
+    typeName: dimension.typeCode,
+    status: dimension.status,
+  };
 }
