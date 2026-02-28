@@ -148,3 +148,72 @@ export interface BusinessObjectInstance {
   status: string;
   accountingBudgetOverrides: Record<string, BusinessObjectFieldOverride>;
 }
+
+
+export interface RequisitionLine {
+  lineNumber: number;
+  description: string;
+  quantity: number;
+  uom?: string;
+  unitPrice?: number;
+  amount: number;
+  supplierName: string;
+  supplierUrl?: string;
+  supplierSku?: string;
+}
+
+export interface RequisitionDraft {
+  id: string;
+  status: 'DRAFT' | 'SUBMITTED';
+  title: string;
+  memo?: string;
+  requesterName: string;
+  currency: string;
+  needByDate?: string;
+  chargingBusinessDimensionId?: string;
+  chargingBusinessDimensionCode?: string;
+  chargingBusinessDimensionName?: string;
+  budgetPlanId?: string;
+  lines: RequisitionLine[];
+  totals: { subtotal: number };
+}
+
+export interface ChargingLocation {
+  id: string;
+  code: string;
+  name: string;
+  typeName: string;
+  status: string;
+}
+
+export interface SupplierResult {
+  supplier: string;
+  title: string;
+  price?: number;
+  availability?: string;
+  url: string;
+  sku?: string;
+}
+
+export interface AgentDraftResponse {
+  parsed: { quantity: number; item: string; keywords: string[]; orgHint?: string; uom?: string };
+  suggestedChargingDimension?: ChargingLocation;
+  searchLinks: Record<string, string>;
+  results: Record<string, SupplierResult[]>;
+  draft: { title: string; memo: string; currency: string; lines: RequisitionLine[] };
+  warnings: string[];
+}
+
+export interface FundingSnapshot {
+  chargingDimension?: ChargingLocation;
+  budget?: { id: string; budgetPlanId?: string; budgetPlanName?: string; amount: number };
+  allocationsFrom: Array<{ id: string; allocatedDimension?: ChargingLocation; amount: number }>;
+  allocationsTo: Array<{ id: string; allocatedDimension?: ChargingLocation; amount: number }>;
+  totals: {
+    budgetTotal?: number;
+    allocatedFromTotal: number;
+    allocatedToTotal: number;
+    requisitionTotal: number;
+    remainingIfBudget?: number;
+  };
+}

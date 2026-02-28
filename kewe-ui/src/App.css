@@ -40,3 +40,12 @@
 .read-the-docs {
   color: #888;
 }
+
+.requisitions-page textarea,
+.requisitions-page input { width: 100%; margin-bottom: 0.5rem; }
+.button-row { display:flex; gap:0.5rem; margin-bottom:0.5rem; }
+.button-row .secondary { background:#f1f1f1; color:#333; }
+.grid-two { display:grid; grid-template-columns:1.3fr 1fr; gap:1rem; }
+.pill-row { display:flex; gap:0.5rem; margin-bottom:0.5rem; }
+.pill-row button.active { background:#4a2aa8; color:white; }
+.text-danger { color:#b42318; }
