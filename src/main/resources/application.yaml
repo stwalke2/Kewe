@@ -8,6 +8,7 @@ server:
 
 kewe:
   search-provider: ${KEWE_SEARCH_PROVIDER:bing}
+  playwright-enabled: ${KEWE_PLAYWRIGHT_ENABLED:true}
   bing-key: ${KEWE_BING_KEY:}
   bing-endpoint: ${KEWE_BING_ENDPOINT:https://api.bing.microsoft.com/v7.0/search}
   bing-mkt: ${KEWE_BING_MKT:en-US}

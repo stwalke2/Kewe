@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "kewe")
 public class AgentSearchProperties {
     private String searchProvider = "bing";
+    private boolean playwrightEnabled = true;
     private String bingKey;
     private String bingEndpoint = "https://api.bing.microsoft.com/v7.0/search";
     private String bingMkt = "en-US";
@@ -17,6 +18,8 @@ public class AgentSearchProperties {
 
     public String getSearchProvider() { return searchProvider == null ? "bing" : searchProvider; }
     public void setSearchProvider(String searchProvider) { this.searchProvider = searchProvider; }
+    public boolean isPlaywrightEnabled() { return playwrightEnabled; }
+    public void setPlaywrightEnabled(boolean playwrightEnabled) { this.playwrightEnabled = playwrightEnabled; }
     public String getBingKey() { return bingKey; }
     public void setBingKey(String bingKey) { this.bingKey = bingKey; }
     public String getBingEndpoint() { return bingEndpoint; }
