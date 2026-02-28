@@ -26,8 +26,10 @@ public class HttpHtmlFetcher implements HtmlFetcher {
                 throw new RuntimeException("HTTP " + response.statusCode());
             }
             return response.body();
-        } catch (IOException | InterruptedException e) {
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            throw new RuntimeException("Interrupted while fetching URL " + url, e);
+        } catch (IOException e) {
             throw new RuntimeException("Failed to fetch URL " + url, e);
         }
     }
