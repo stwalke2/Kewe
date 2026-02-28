@@ -1,15 +1,19 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
+import { fetchDimensionTree, fetchDimensionTypes, getErrorDetails } from '../api';
+import type { ApiErrorDetails, DimensionNode } from '../api/types';
 
 type AllocationRow = {
   id: string;
-  businessDimension: string;
+  businessDimensionId: string;
+  businessDimensionLabel: string;
   allocatedFrom: string;
   amount: number;
 };
 
 type BudgetRow = {
   id: string;
-  businessDimension: string;
+  businessDimensionId: string;
+  businessDimensionLabel: string;
   budgetPlan: string;
   budgetAmount: number;
   canAllocate: boolean;
@@ -17,53 +21,83 @@ type BudgetRow = {
 };
 
 type BudgetForm = {
-  businessDimension: string;
+  businessDimensionId: string;
   budgetPlan: string;
   budgetAmount: string;
   canAllocate: boolean;
 };
 
 type AllocationForm = {
-  businessDimension: string;
+  businessDimensionId: string;
   amount: string;
 };
 
-const seedBudgets: BudgetRow[] = [
-  {
-    id: 'b-1',
-    businessDimension: 'CC-Biology',
-    budgetPlan: 'FY26 Operating',
-    budgetAmount: 100000,
-    canAllocate: true,
-    allocations: [
-      {
-        id: 'a-1',
-        businessDimension: 'PD Tom Jones',
-        allocatedFrom: 'CC-Biology',
-        amount: 100000,
-      },
-    ],
-  },
-];
+type DimensionOption = {
+  id: string;
+  label: string;
+};
 
 function formatCurrency(amount: number): string {
   return amount.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
 }
 
 function emptyBudgetForm(): BudgetForm {
-  return { businessDimension: '', budgetPlan: '', budgetAmount: '', canAllocate: false };
+  return { businessDimensionId: '', budgetPlan: '', budgetAmount: '', canAllocate: false };
+}
+
+function emptyAllocationForm(): AllocationForm {
+  return { businessDimensionId: '', amount: '' };
 }
 
 export function BudgetsPage() {
-  const [budgets, setBudgets] = useState<BudgetRow[]>(seedBudgets);
+  const [budgets, setBudgets] = useState<BudgetRow[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [budgetModalId, setBudgetModalId] = useState<string | null>(null);
   const [budgetModalMode, setBudgetModalMode] = useState<'create' | 'edit' | null>(null);
+  const [allocationModalBudgetId, setAllocationModalBudgetId] = useState<string | null>(null);
   const [allocationModalId, setAllocationModalId] = useState<string | null>(null);
+  const [allocationModalMode, setAllocationModalMode] = useState<'create' | 'edit' | null>(null);
   const [budgetForm, setBudgetForm] = useState<BudgetForm>(emptyBudgetForm());
-  const [allocationForm, setAllocationForm] = useState<AllocationForm>({ businessDimension: '', amount: '' });
+  const [allocationForm, setAllocationForm] = useState<AllocationForm>(emptyAllocationForm());
+  const [dimensionOptions, setDimensionOptions] = useState<DimensionOption[]>([]);
+  const [dimensionError, setDimensionError] = useState<ApiErrorDetails | null>(null);
+  const [dimensionLoading, setDimensionLoading] = useState(true);
 
-  const selectedBudgetForAllocation = allocationModalId ? budgets.find((budget) => budget.id === allocationModalId) ?? null : null;
+  useEffect(() => {
+    void loadDimensions();
+  }, []);
+
+  const dimensionLabelById = useMemo(() => new Map(dimensionOptions.map((option) => [option.id, option.label])), [dimensionOptions]);
+
+  const selectedBudgetForAllocation = allocationModalBudgetId
+    ? budgets.find((budget) => budget.id === allocationModalBudgetId) ?? null
+    : null;
+
+  const selectedAllocation = useMemo(() => {
+    if (!allocationModalBudgetId || !allocationModalId) return null;
+    const budget = budgets.find((item) => item.id === allocationModalBudgetId);
+    return budget?.allocations.find((allocation) => allocation.id === allocationModalId) ?? null;
+  }, [allocationModalBudgetId, allocationModalId, budgets]);
+
+  const allocationDimensionSelectDisabled = dimensionLoading || dimensionOptions.length === 0;
+
+  async function loadDimensions() {
+    try {
+      setDimensionLoading(true);
+      setDimensionError(null);
+      const types = await fetchDimensionTypes();
+      const allNodes = await Promise.all(types.map((type) => fetchDimensionTree(type.code)));
+      const activeNodes = allNodes
+        .flat()
+        .filter((node) => node.status === 'ACTIVE')
+        .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
+      setDimensionOptions(activeNodes.map((node) => ({ id: node.id, label: toDimensionLabel(node) })));
+    } catch (error) {
+      setDimensionError(getErrorDetails(error));
+    } finally {
+      setDimensionLoading(false);
+    }
+  }
 
   const toggleExpanded = (budgetId: string) => {
     setExpandedIds((current) => {
@@ -87,7 +121,7 @@ export function BudgetsPage() {
     setBudgetModalMode('edit');
     setBudgetModalId(budget.id);
     setBudgetForm({
-      businessDimension: budget.businessDimension,
+      businessDimensionId: budget.businessDimensionId,
       budgetPlan: budget.budgetPlan,
       budgetAmount: String(budget.budgetAmount),
       canAllocate: budget.canAllocate,
@@ -99,21 +133,58 @@ export function BudgetsPage() {
     setBudgetModalId(null);
   };
 
-  const openAddAllocation = (budget: BudgetRow) => {
-    setAllocationModalId(budget.id);
-    setAllocationForm({ businessDimension: '', amount: '' });
+  const openCreateAllocation = (budget: BudgetRow) => {
+    setAllocationModalMode('create');
+    setAllocationModalBudgetId(budget.id);
+    setAllocationModalId(null);
+    setAllocationForm(emptyAllocationForm());
+  };
+
+  const openEditAllocation = (budget: BudgetRow, allocation: AllocationRow) => {
+    setAllocationModalMode('edit');
+    setAllocationModalBudgetId(budget.id);
+    setAllocationModalId(allocation.id);
+    setAllocationForm({ businessDimensionId: allocation.businessDimensionId, amount: String(allocation.amount) });
+  };
+
+  const closeAllocationModal = () => {
+    setAllocationModalMode(null);
+    setAllocationModalBudgetId(null);
+    setAllocationModalId(null);
+  };
+
+  const deleteBudget = (budgetId: string) => {
+    setBudgets((current) => current.filter((budget) => budget.id !== budgetId));
+    setExpandedIds((current) => {
+      const next = new Set(current);
+      next.delete(budgetId);
+      return next;
+    });
+  };
+
+  const deleteAllocation = (budgetId: string, allocationId: string) => {
+    setBudgets((current) => current.map((budget) => {
+      if (budget.id !== budgetId) return budget;
+      return {
+        ...budget,
+        allocations: budget.allocations.filter((allocation) => allocation.id !== allocationId),
+      };
+    }));
   };
 
   const saveBudget = () => {
     const parsedAmount = Number(budgetForm.budgetAmount.replace(/,/g, ''));
-    if (!budgetForm.businessDimension.trim() || !budgetForm.budgetPlan.trim() || !Number.isFinite(parsedAmount) || parsedAmount < 0) {
+    const selectedDimensionLabel = dimensionLabelById.get(budgetForm.businessDimensionId);
+
+    if (!budgetForm.businessDimensionId || !selectedDimensionLabel || !budgetForm.budgetPlan.trim() || !Number.isFinite(parsedAmount) || parsedAmount < 0) {
       return;
     }
 
     if (budgetModalMode === 'create') {
       const createdBudget: BudgetRow = {
         id: `b-${Date.now()}`,
-        businessDimension: budgetForm.businessDimension.trim(),
+        businessDimensionId: budgetForm.businessDimensionId,
+        businessDimensionLabel: selectedDimensionLabel,
         budgetPlan: budgetForm.budgetPlan.trim(),
         budgetAmount: parsedAmount,
         canAllocate: budgetForm.canAllocate,
@@ -128,7 +199,8 @@ export function BudgetsPage() {
     setBudgets((current) => current.map((budget) => (budget.id === budgetModalId
       ? {
         ...budget,
-        businessDimension: budgetForm.businessDimension.trim(),
+        businessDimensionId: budgetForm.businessDimensionId,
+        businessDimensionLabel: selectedDimensionLabel,
         budgetPlan: budgetForm.budgetPlan.trim(),
         budgetAmount: parsedAmount,
         canAllocate: budgetForm.canAllocate,
@@ -138,24 +210,42 @@ export function BudgetsPage() {
   };
 
   const saveAllocation = () => {
-    if (!allocationModalId || !selectedBudgetForAllocation) return;
+    if (!allocationModalBudgetId || !selectedBudgetForAllocation || !allocationModalMode) return;
     const parsedAmount = Number(allocationForm.amount.replace(/,/g, ''));
-    if (!allocationForm.businessDimension.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+    const selectedDimensionLabel = dimensionLabelById.get(allocationForm.businessDimensionId);
+    if (!allocationForm.businessDimensionId || !selectedDimensionLabel || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       return;
     }
 
     setBudgets((current) => current.map((budget) => {
-      if (budget.id !== allocationModalId) return budget;
+      if (budget.id !== allocationModalBudgetId) return budget;
+
+      if (allocationModalMode === 'edit' && allocationModalId) {
+        return {
+          ...budget,
+          allocations: budget.allocations.map((allocation) => (allocation.id === allocationModalId
+            ? {
+              ...allocation,
+              businessDimensionId: allocationForm.businessDimensionId,
+              businessDimensionLabel: selectedDimensionLabel,
+              amount: parsedAmount,
+            }
+            : allocation)),
+        };
+      }
+
       const nextAllocation: AllocationRow = {
         id: `a-${Date.now()}`,
-        businessDimension: allocationForm.businessDimension.trim(),
-        allocatedFrom: selectedBudgetForAllocation.businessDimension,
+        businessDimensionId: allocationForm.businessDimensionId,
+        businessDimensionLabel: selectedDimensionLabel,
+        allocatedFrom: selectedBudgetForAllocation.businessDimensionLabel,
         amount: parsedAmount,
       };
       return { ...budget, allocations: [...budget.allocations, nextAllocation] };
     }));
-    setExpandedIds((current) => new Set([...current, allocationModalId]));
-    setAllocationModalId(null);
+
+    setExpandedIds((current) => new Set([...current, allocationModalBudgetId]));
+    closeAllocationModal();
   };
 
   return (
@@ -166,9 +256,12 @@ export function BudgetsPage() {
           <p>Set budgets by Business Dimension, then allocate those budgets through nested allocations.</p>
         </div>
         <div className="header-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => void loadDimensions()}>Refresh Business Dimensions</button>
           <button type="button" className="btn btn-primary" onClick={openCreateBudget}>Add Budget</button>
         </div>
       </div>
+
+      {dimensionError && <div className="message error"><strong>Unable to load business dimensions.</strong><div>{dimensionError.message}</div></div>}
 
       <article className="card table-card">
         <div className="table-scroll-wrap">
@@ -198,13 +291,14 @@ export function BudgetsPage() {
                           {isExpanded ? '▾' : '▸'}
                         </button>
                       </td>
-                      <td className="strong">{budget.businessDimension}</td>
+                      <td className="strong">{budget.businessDimensionLabel}</td>
                       <td>{budget.budgetPlan}</td>
                       <td className="amount strong">{formatCurrency(budget.budgetAmount)}</td>
                       <td>
                         <div className="inline-actions">
                           <button type="button" className="btn btn-secondary" onClick={() => openEditBudget(budget)}>Edit Budget</button>
-                          <button type="button" className="btn btn-primary" disabled={!budget.canAllocate} onClick={() => openAddAllocation(budget)}>Add Allocation</button>
+                          <button type="button" className="btn btn-secondary" onClick={() => deleteBudget(budget.id)}>Delete Budget</button>
+                          <button type="button" className="btn btn-primary" disabled={!budget.canAllocate} onClick={() => openCreateAllocation(budget)}>Add Allocation</button>
                         </div>
                       </td>
                     </tr>
@@ -219,19 +313,26 @@ export function BudgetsPage() {
                                   <th>Business Dimension</th>
                                   <th>Allocated From</th>
                                   <th className="amount">Allocated Amount</th>
+                                  <th>Actions</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {budget.allocations.length === 0 && (
                                   <tr>
-                                    <td colSpan={3} className="subtle">No allocations yet for this budget.</td>
+                                    <td colSpan={4} className="subtle">No allocations yet for this budget.</td>
                                   </tr>
                                 )}
                                 {budget.allocations.map((allocation) => (
                                   <tr key={allocation.id}>
-                                    <td>{allocation.businessDimension}</td>
+                                    <td>{allocation.businessDimensionLabel}</td>
                                     <td>{allocation.allocatedFrom}</td>
                                     <td className="amount strong">{formatCurrency(allocation.amount)}</td>
+                                    <td>
+                                      <div className="inline-actions">
+                                        <button type="button" className="btn btn-secondary" onClick={() => openEditAllocation(budget, allocation)}>Edit Allocation</button>
+                                        <button type="button" className="btn btn-secondary" onClick={() => deleteAllocation(budget.id, allocation.id)}>Delete Allocation</button>
+                                      </div>
+                                    </td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -262,7 +363,16 @@ export function BudgetsPage() {
             <div className="modal-form">
               <label>
                 Business Dimension
-                <input value={budgetForm.businessDimension} onChange={(event) => setBudgetForm((current) => ({ ...current, businessDimension: event.target.value }))} />
+                <select
+                  value={budgetForm.businessDimensionId}
+                  onChange={(event) => setBudgetForm((current) => ({ ...current, businessDimensionId: event.target.value }))}
+                  disabled={allocationDimensionSelectDisabled}
+                >
+                  <option value="">Select business dimension</option>
+                  {dimensionOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
               </label>
               <label>
                 Budget Plan
@@ -285,19 +395,30 @@ export function BudgetsPage() {
         </div>
       )}
 
-      {selectedBudgetForAllocation && (
+      {selectedBudgetForAllocation && allocationModalMode && (
         <div className="modal-backdrop" role="presentation">
-          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="add-allocation-title">
+          <div className="modal" role="dialog" aria-modal="true" aria-labelledby="allocation-modal-title">
             <div className="modal-header">
-              <h2 id="add-allocation-title">Add Allocation</h2>
+              <h2 id="allocation-modal-title">{allocationModalMode === 'create' ? 'Add Allocation' : 'Edit Allocation'}</h2>
               <p>
-                Allocate budget from <strong>{selectedBudgetForAllocation.businessDimension}</strong>.
+                {allocationModalMode === 'create'
+                  ? <>Allocate budget from <strong>{selectedBudgetForAllocation.businessDimensionLabel}</strong>.</>
+                  : <>Update allocation from <strong>{selectedBudgetForAllocation.businessDimensionLabel}</strong>.</>}
               </p>
             </div>
             <div className="modal-form">
               <label>
                 Business Dimension
-                <input value={allocationForm.businessDimension} onChange={(event) => setAllocationForm((current) => ({ ...current, businessDimension: event.target.value }))} placeholder="PD Tom Jones" />
+                <select
+                  value={allocationForm.businessDimensionId}
+                  onChange={(event) => setAllocationForm((current) => ({ ...current, businessDimensionId: event.target.value }))}
+                  disabled={allocationDimensionSelectDisabled}
+                >
+                  <option value="">Select business dimension</option>
+                  {dimensionOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
               </label>
               <label>
                 Allocated Amount
@@ -305,12 +426,20 @@ export function BudgetsPage() {
               </label>
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn btn-secondary" onClick={() => setAllocationModalId(null)}>Cancel</button>
-              <button type="button" className="btn btn-primary" onClick={saveAllocation}>Save Allocation</button>
+              <button type="button" className="btn btn-secondary" onClick={closeAllocationModal}>Cancel</button>
+              <button type="button" className="btn btn-primary" onClick={saveAllocation}>{allocationModalMode === 'create' ? 'Save Allocation' : 'Update Allocation'}</button>
             </div>
           </div>
         </div>
       )}
+
+      {allocationModalMode === 'edit' && !selectedAllocation && (
+        <div className="message error">The selected allocation could not be found.</div>
+      )}
     </section>
   );
+}
+
+function toDimensionLabel(node: DimensionNode): string {
+  return `${node.code} — ${node.name}`;
 }

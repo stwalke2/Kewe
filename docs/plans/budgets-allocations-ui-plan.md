@@ -1,34 +1,36 @@
 # Budgets & Allocations Page Plan
 
 ## Requirements
-- Add a dedicated Budgets page in the UI that lists budget records by business dimension.
-- Provide an **Add Budget** action that opens a popup form to create a new budget row.
-- Show each budget row with `Business Dimension`, `Budget Plan`, `Budget`, and allocation actions.
-- Support expanding a budget row to view a nested Allocations table.
-- Provide an **Add Allocation** action that opens a popup form to add allocation records.
-- Provide an **Edit Budget** action that opens a popup form to edit budget fields.
-- Persist page edits in local in-memory state for this iteration.
+- Add support for **editing and deleting budgets** directly from the budgets table.
+- Add support for **editing and deleting allocations** from the nested allocations table.
+- Restrict budget/allocation business dimension selection to values sourced from the **Business Dimensions** setup data (the same dataset shown on the Business Dimensions page).
+- Keep this iteration in front-end state only (no persistence changes).
 
 ## Non-goals
-- Backend persistence or new API endpoints.
-- Validation against accounting rules (e.g., budget over-allocation constraints).
-- Cross-page integration into other setup workflows.
+- Backend persistence or new budget/allocation API endpoints.
+- New accounting validation rules such as cross-budget balancing.
+- Changes to the Business Dimensions maintenance workflows.
 
 ## Proposed API + Data Model
 - No backend API changes.
-- Front-end local model:
-  - `BudgetRow`: `id`, `businessDimension`, `budgetPlan`, `budgetAmount`, `canAllocate`, `allocations`.
-  - `AllocationRow`: `id`, `businessDimension`, `allocatedFrom`, `amount`.
-- Form model:
-  - Budget modal: `businessDimension`, `budgetPlan`, `budgetAmount`, `canAllocate`.
-  - Allocation modal: `businessDimension`, `amount` (with `allocatedFrom` derived from parent budget).
+- Reuse existing dimensions APIs used by the Business Dimensions page:
+  - `fetchDimensionTypes()`
+  - `fetchDimensionTree(typeCode)`
+- Front-end model updates:
+  - `BudgetRow`: `businessDimensionId`, `businessDimensionLabel`, plus existing budget fields.
+  - `AllocationRow`: `businessDimensionId`, `businessDimensionLabel`, `allocatedFrom`, `amount`.
+- UI behavior:
+  - Budget and allocation modals use `<select>` controls populated from active dimension nodes.
+  - Deleting budget removes the row and its nested allocations.
+  - Editing allocation updates selected dimension and amount in place.
 
 ## Test Plan
-- Build the UI bundle (`npm run build`) to verify TypeScript and Vite compile.
-- Verify row expansion and nested table rendering from state updates.
-- Verify modal flows for Add Allocation and Edit Budget update visible table values.
+- Run `npm run build` in `kewe-ui` to verify TypeScript compile and production build.
+- Validate budget flows: add, edit, delete.
+- Validate allocation flows: add, edit, delete.
+- Validate dimension restriction: budget/allocation forms provide a dropdown list sourced from dimensions data only.
 
 ## Risks / Open Questions
-- Without backend persistence, changes reset on page reload.
-- Allocation eligibility is currently controlled by a manual `canAllocate` checkbox.
-- No server-side constraints yet for allocation amount or dimension validity.
+- Without dedicated backend endpoints, all changes are lost on page reload.
+- If dimensions fail to load, budget/allocation selection is temporarily unavailable.
+- Current UX does not yet include confirmation prompts for deletes.
