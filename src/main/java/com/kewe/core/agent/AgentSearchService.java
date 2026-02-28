@@ -5,6 +5,8 @@ import com.kewe.core.requisition.RequisitionLine;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.net.URLEncoder;
@@ -19,6 +21,7 @@ import java.util.regex.Pattern;
 
 @Service
 public class AgentSearchService {
+    private static final Logger log = LoggerFactory.getLogger(AgentSearchService.class);
     private static final Pattern PRICE_PATTERN = Pattern.compile("\\$(\\d+[\\d,]*(?:\\.\\d{2})?)");
     private static final Pattern SKU_PATTERN = Pattern.compile("(?:sku|model|part)[:#\\s]*([A-Za-z0-9-]+)", Pattern.CASE_INSENSITIVE);
 
@@ -43,8 +46,13 @@ public class AgentSearchService {
         this.homeDepot = homeDepot;
     }
 
-    public AgentDraftResponse createDraft(String prompt) {
+    public AgentDraftResponse createDraft(String prompt, boolean stubMode) {
         PromptParser.ParsedPrompt parsed = parser.parse(prompt);
+        log.info("Agent draft request started (stubMode={}, prompt={})", stubMode, prompt);
+
+        if (stubMode) {
+            return stubDraft(parsed, prompt);
+        }
         List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
         FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
         Map<String, String> links = Map.of(
@@ -67,14 +75,60 @@ public class AgentSearchService {
                 prefilled == null ? List.of() : List.of(prefilled)
         );
 
-        return new AgentDraftResponse(parsed, suggested, links, results, draft, warnings);
+        AgentDraftResponse response = new AgentDraftResponse(parsed, suggested, links, results, draft, warnings);
+        log.info("Agent draft request finished (lines={}, warnings={})", response.draft().lines().size(), warnings.size());
+        return response;
+    }
+
+    private AgentDraftResponse stubDraft(PromptParser.ParsedPrompt parsed, String prompt) {
+        List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
+        FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
+
+        Map<String, String> links = new HashMap<>();
+        links.put("amazon", amazon.searchLink(parsed.item()));
+        links.put("fisher", fisher.searchLink(parsed.item()));
+        links.put("homedepot", homeDepot.searchLink(parsed.item()));
+
+        SupplierResult sample = new SupplierResult(
+                "Stub Supplier",
+                parsed.item().isBlank() ? "Lab supply starter pack" : "Stub result: " + parsed.item(),
+                19.99,
+                "STUB-001",
+                "https://example.com/stub-item",
+                "STUB-001"
+        );
+
+        Map<String, List<SupplierResult>> results = new HashMap<>();
+        results.put("amazon", List.of(sample));
+        results.put("fisher", List.of(sample));
+        results.put("homedepot", List.of(sample));
+
+        RequisitionLine line = new RequisitionLine();
+        line.setLineNumber(1);
+        line.setDescription(sample.title());
+        line.setQuantity(parsed.quantity());
+        line.setUom(parsed.uom());
+        line.setUnitPrice(sample.price());
+        line.setAmount(sample.price() * parsed.quantity());
+        line.setSupplierName(sample.supplier());
+        line.setSupplierUrl(sample.url());
+        line.setSupplierSku(sample.sku());
+
+        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", List.of(line));
+        java.util.ArrayList<String> warnings = new java.util.ArrayList<>();
+        warnings.add("Stub mode enabled: returning canned supplier results.");
+        AgentDraftResponse response = new AgentDraftResponse(parsed, suggested, links, results, draft, warnings);
+        log.info("Agent draft stub response generated (lines={})", response.draft().lines().size());
+        return response;
     }
 
     private void searchSupplier(String key, SupplierSearchClient client, String query, Map<String, List<SupplierResult>> sink, List<String> warnings) {
         try {
+            log.info("Searching supplier {} with query [{}]", client.supplierName(), query);
             List<SupplierResult> direct = client.search(query);
             if (!direct.isEmpty()) {
                 sink.put(key, direct);
+                log.info("Supplier {} returned {} direct results", client.supplierName(), direct.size());
                 return;
             }
 
@@ -82,12 +136,15 @@ public class AgentSearchService {
             sink.put(key, fallback);
             if (fallback.isEmpty()) {
                 warnings.add("Could not fetch " + client.supplierName() + " results; open search link.");
+                log.warn("Supplier {} fallback search returned no results", client.supplierName());
             } else {
                 warnings.add("Using fallback web search for " + client.supplierName() + " results.");
+                log.info("Supplier {} fallback returned {} results", client.supplierName(), fallback.size());
             }
         } catch (Exception ex) {
             sink.put(key, List.of());
             warnings.add("Failed to fetch " + client.supplierName() + " results: " + ex.getMessage());
+            log.warn("Supplier {} failed", client.supplierName(), ex);
         }
     }
 

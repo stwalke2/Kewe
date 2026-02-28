@@ -27,7 +27,9 @@ import java.nio.file.Path;
 
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -98,5 +100,23 @@ class AgentDraftIntegrationTest {
                 .andExpect(jsonPath("$.results.amazon[0].title").value("Amazon.com: glass beaker results"))
                 .andExpect(jsonPath("$.draft.lines[0].supplierName").exists())
                 .andExpect(jsonPath("$.searchLinks.amazon").exists());
+    }
+
+    @Test
+    void shouldReturnStubDraftWhenStubModeEnabled() throws Exception {
+        mockMvc.perform(post("/api/agent/requisition-draft?mode=stub")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"prompt\":\"buy beaker for biology\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.warnings[0]").value("Stub mode enabled: returning canned supplier results."))
+                .andExpect(jsonPath("$.results.amazon[0].supplier").value("Stub Supplier"))
+                .andExpect(jsonPath("$.draft.lines[0].description").value("Stub result: beaker biology"));
+    }
+
+    @Test
+    void shouldRespondToAgentPing() throws Exception {
+        mockMvc.perform(get("/api/agent/ping"))
+                .andExpect(status().isOk())
+                .andExpect(content().string("ok"));
     }
 }

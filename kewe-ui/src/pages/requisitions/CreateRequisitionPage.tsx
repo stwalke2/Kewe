@@ -2,53 +2,13 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   agentDraftRequisition,
   createRequisitionDraft,
-  fetchBusinessObjects,
   fetchChargingLocations,
   fetchFundingSnapshot,
   updateRequisitionDraft,
 } from '../../api';
-import type { BusinessObjectInstance, ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
+import type { ChargingLocation, RequisitionDraft, RequisitionLine, SupplierResult } from '../../api/types';
 
 const SUPPLIERS = ['amazon', 'fisher', 'homedepot'] as const;
-
-type StoredBudgetRow = {
-  businessDimensionId?: string;
-  allocations?: Array<{ businessDimensionId?: string }>;
-};
-
-const BUDGETS_STORAGE_KEY = 'kewe.budgets';
-
-function loadBudgetScreenDimensionIds(): string[] {
-  if (typeof window === 'undefined') return [];
-
-  const raw = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw) as StoredBudgetRow[];
-    if (!Array.isArray(parsed)) return [];
-    const ids = new Set<string>();
-    parsed.forEach((budget) => {
-      if (budget.businessDimensionId) ids.add(budget.businessDimensionId);
-      (budget.allocations ?? []).forEach((allocation) => {
-        if (allocation.businessDimensionId) ids.add(allocation.businessDimensionId);
-      });
-    });
-    return [...ids];
-  } catch {
-    return [];
-  }
-}
-
-function toChargingLocation(item: BusinessObjectInstance): ChargingLocation {
-  return {
-    id: item.id,
-    code: item.code,
-    name: item.name,
-    typeName: item.typeCode,
-    status: item.status,
-  };
-}
 
 export function CreateRequisitionPage() {
   const [draft, setDraft] = useState<RequisitionDraft | null>(null);
@@ -67,29 +27,10 @@ export function CreateRequisitionPage() {
   }, []);
 
   async function loadChargingLocations() {
-    try {
-      const [backendLocations, objects] = await Promise.all([
-        fetchChargingLocations(),
-        fetchBusinessObjects(),
-      ]);
-
-      const budgetDimensionIds = new Set(loadBudgetScreenDimensionIds());
-      const budgetLocations = objects
-        .filter((item) => budgetDimensionIds.has(item.id))
-        .map(toChargingLocation);
-
-      const merged = new Map<string, ChargingLocation>();
-      [...backendLocations, ...budgetLocations].forEach((location) => {
-        merged.set(location.id, location);
-      });
-
-      setChargingLocations([...merged.values()].sort((left, right) =>
-        `${left.typeName} ${left.code} ${left.name}`.localeCompare(`${right.typeName} ${right.code} ${right.name}`),
-      ));
-    } catch {
-      const fallback = await fetchChargingLocations();
-      setChargingLocations(fallback);
-    }
+    const backendLocations = await fetchChargingLocations();
+    setChargingLocations([...backendLocations].sort((left, right) =>
+      `${left.typeName} ${left.code} ${left.name}`.localeCompare(`${right.typeName} ${right.code} ${right.name}`),
+    ));
   }
 
   const subtotal = useMemo(() => draft?.lines.reduce((sum, line) => sum + (line.amount || 0), 0) ?? 0, [draft]);
@@ -107,25 +48,33 @@ export function CreateRequisitionPage() {
 
   async function runAgent() {
     if (!prompt.trim() || !draft) return;
-    setStatus('Parsing request…');
-    await new Promise((r) => setTimeout(r, 300));
-    setStatus('Searching suppliers…');
-    const response = await agentDraftRequisition(prompt);
-    setStatus('Building draft…');
-    setResults(response.results);
-    setLinks(response.searchLinks);
-    setWarnings(response.warnings);
-    setDraft({
-      ...draft,
-      title: response.draft.title,
-      memo: response.draft.memo,
-      currency: response.draft.currency,
-      chargingBusinessDimensionId: response.suggestedChargingDimension?.id,
-      chargingBusinessDimensionCode: response.suggestedChargingDimension?.code,
-      chargingBusinessDimensionName: response.suggestedChargingDimension?.name,
-      lines: response.draft.lines,
-    });
-    setStatus(null);
+    setWarnings([]);
+    try {
+      setStatus('Parsing request…');
+      await new Promise((r) => setTimeout(r, 300));
+      setStatus('Searching suppliers…');
+      const response = await agentDraftRequisition(prompt);
+      setStatus('Building draft…');
+      setResults(response.results);
+      setLinks(response.searchLinks);
+      setWarnings(response.warnings);
+      setDraft({
+        ...draft,
+        title: response.draft.title,
+        memo: response.draft.memo,
+        currency: response.draft.currency,
+        chargingBusinessDimensionId: response.suggestedChargingDimension?.id,
+        chargingBusinessDimensionCode: response.suggestedChargingDimension?.code,
+        chargingBusinessDimensionName: response.suggestedChargingDimension?.name,
+        lines: response.draft.lines,
+      });
+    } catch {
+      setWarnings(['Could not draft requisition. Verify backend is running and retry.']);
+      setResults({ amazon: [], fisher: [], homedepot: [] });
+      setLinks({});
+    } finally {
+      setStatus(null);
+    }
   }
 
   function addResult(result: SupplierResult) {
@@ -184,10 +133,10 @@ export function CreateRequisitionPage() {
         <section>
           <h3>Funding Snapshot</h3>
           <label>Charging Location</label>
-          <input list="charging-locations" value={draft.chargingBusinessDimensionId ?? ''} onChange={(e) => setDraft({ ...draft, chargingBusinessDimensionId: e.target.value })} />
-          <datalist id="charging-locations">
+          <select value={draft.chargingBusinessDimensionId ?? ''} onChange={(e) => setDraft({ ...draft, chargingBusinessDimensionId: e.target.value })}>
+            <option value="">Select charging location</option>
             {chargingLocations.map((c) => <option key={c.id} value={c.id}>{`${c.code} — ${c.name} · ${c.typeName}`}</option>)}
-          </datalist>
+          </select>
           <label>Budget Plan</label>
           <input value={draft.budgetPlanId ?? 'FY26-OPERATING'} onChange={(e) => setDraft({ ...draft, budgetPlanId: e.target.value })} />
           <div>Budget Total: {funding?.totals?.budgetTotal ?? '—'}</div>
