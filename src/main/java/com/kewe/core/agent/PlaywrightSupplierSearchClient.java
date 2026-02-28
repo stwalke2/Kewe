@@ -4,6 +4,7 @@ import com.microsoft.playwright.Browser;
 import com.microsoft.playwright.BrowserContext;
 import com.microsoft.playwright.Page;
 import com.microsoft.playwright.PlaywrightException;
+import com.microsoft.playwright.options.LoadState;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -54,7 +55,7 @@ public abstract class PlaywrightSupplierSearchClient implements SupplierSearchCl
                     .setLocale("en-US"))) {
                 Page page = context.newPage();
                 page.navigate(searchLink(query.keywords()), new Page.NavigateOptions().setTimeout(6000));
-                page.waitForLoadState(Page.LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(6000));
+                page.waitForLoadState(LoadState.DOMCONTENTLOADED, new Page.WaitForLoadStateOptions().setTimeout(6000));
                 waitForResultSelector(page);
                 String body = page.content().toLowerCase();
                 if (isBlocked(body)) {
