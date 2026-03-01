@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 public class PromptParser {
     private static final Pattern INTEGER_PATTERN = Pattern.compile("\\b(\\d+)\\b");
     private static final Pattern FOR_PATTERN = Pattern.compile("\\bfor\\s+([a-zA-Z0-9\\s-]+)$", Pattern.CASE_INSENSITIVE);
-    private static final Set<String> STOPWORDS = new HashSet<>(List.of("i", "need", "to", "purchase", "buy", "please", "get", "a", "an", "the", "for"));
+    private static final Set<String> STOPWORDS = new HashSet<>(List.of("i", "need", "to", "purchase", "buy", "please", "get", "a", "an", "the", "for", "we", "want", "require"));
 
     public ParsedPrompt parse(String prompt) {
         String safePrompt = prompt == null ? "" : prompt.trim();
@@ -38,14 +38,13 @@ public class PromptParser {
                 .distinct()
                 .toList();
 
-        String uom = keywords.stream().filter(token -> List.of("ml", "oz", "inch", "in", "cm", "mm", "pack", "ea").contains(token)).findFirst().orElse(null);
         String item = String.join(" ", keywords);
         if (item.isBlank()) {
             item = safePrompt;
         }
 
-        return new ParsedPrompt(quantity, item.trim(), keywords, orgHint, uom);
+        return new ParsedPrompt(quantity, item.trim(), keywords, orgHint, item.trim());
     }
 
-    public record ParsedPrompt(int quantity, String item, List<String> keywords, String orgHint, String uom) {}
+    public record ParsedPrompt(int quantity, String item, List<String> keywords, String orgHint, String normalizedQuery) {}
 }

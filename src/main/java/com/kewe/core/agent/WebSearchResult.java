@@ -1,4 +1,13 @@
 package com.kewe.core.agent;
 
-public record WebSearchResult(String title, String url, String snippet, String displayUrl) {
+import java.math.BigDecimal;
+
+public record WebSearchResult(String title,
+                              String url,
+                              String snippet,
+                              String source,
+                              String domain,
+                              String imageUrl,
+                              BigDecimal price,
+                              String currency) {
 }

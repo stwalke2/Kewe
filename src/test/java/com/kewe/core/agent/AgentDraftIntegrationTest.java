@@ -22,10 +22,10 @@ import org.testcontainers.containers.MongoDBContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -43,22 +43,16 @@ class AgentDraftIntegrationTest {
     @DynamicPropertySource
     static void configureMongo(DynamicPropertyRegistry registry) {
         registry.add("spring.data.mongodb.uri", mongoDBContainer::getReplicaSetUrl);
-        registry.add("kewe.search-provider", () -> "bing");
-        registry.add("kewe.bing-key", () -> "test-key");
+        registry.add("kewe.websearch-provider", () -> "serpapi");
+        registry.add("kewe.serpapi-key", () -> "test-key");
     }
 
-    @Autowired
-    private MockMvc mockMvc;
-    @MockBean
-    private SearchProviderClient searchProvider;
-    @Autowired
-    private BusinessObjectRepository businessObjectRepository;
-    @Autowired
-    private BusinessObjectTypeRepository typeRepository;
-    @Autowired
-    private BudgetRecordRepository budgetRepository;
-    @Autowired
-    private AllocationRecordRepository allocationRepository;
+    @Autowired private MockMvc mockMvc;
+    @MockBean private WebSearchProvider webSearchProvider;
+    @Autowired private BusinessObjectRepository businessObjectRepository;
+    @Autowired private BusinessObjectTypeRepository typeRepository;
+    @Autowired private BudgetRecordRepository budgetRepository;
+    @Autowired private AllocationRecordRepository allocationRepository;
 
     @BeforeEach
     void setup() {
@@ -83,9 +77,9 @@ class AgentDraftIntegrationTest {
         allocation.setAllocatedFromDimensionId(biology.getId()); allocation.setAllocatedToDimensionId(biology.getId()); allocation.setBudgetPlanId("FY26-OPERATING"); allocation.setAmount(1200);
         allocationRepository.save(allocation);
 
-        when(searchProvider.searchWeb(any(), anyInt())).thenReturn(List.of(
-                new WebSearchResult("Amazon glass beaker", "https://amazon.com/result", "snippet", "amazon.com/result")
-        ));
+        when(webSearchProvider.search(any())).thenReturn(new WebSearchResponse(List.of(
+                new WebSearchResult("Amazon glass beaker", "https://www.amazon.com/dp/123", "500ml beaker", "serpapi", "Amazon", null, BigDecimal.valueOf(12.0), "USD")
+        ), List.of()));
     }
 
     @Test
@@ -95,19 +89,9 @@ class AgentDraftIntegrationTest {
                         .content("{\"prompt\":\"I need to purchase 6 5ml glass beakers for biology\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.parsed.quantity").value(6))
-                .andExpect(jsonPath("$.suggestedChargingDimension.code").value("CC0001"))
-                .andExpect(jsonPath("$.results.fisher").isArray())
+                .andExpect(jsonPath("$.suggestedChargingLocation.code").value("CC0001"))
+                .andExpect(jsonPath("$.results[0].supplier").value("Amazon"))
                 .andExpect(jsonPath("$.searchLinks.amazon").exists());
-    }
-
-    @Test
-    void shouldReturnStubDraftWhenStubModeEnabled() throws Exception {
-        mockMvc.perform(post("/api/agent/requisition-draft?mode=stub")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"prompt\":\"buy beaker for biology\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.warnings[0]").value("Stub mode enabled: returning canned supplier results."))
-                .andExpect(jsonPath("$.results.amazon[0].supplierName").value("Amazon"));
     }
 
     @Test
@@ -117,6 +101,6 @@ class AgentDraftIntegrationTest {
                 .andExpect(content().string("ok"));
         mockMvc.perform(get("/api/agent/capabilities"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.provider").value("bing"));
+                .andExpect(jsonPath("$.provider").value("serpapi"));
     }
 }

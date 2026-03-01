@@ -14,7 +14,7 @@ class PromptParserTest {
         assertThat(parsed.quantity()).isEqualTo(6);
         assertThat(parsed.item()).contains("5ml").contains("glass").contains("beakers");
         assertThat(parsed.orgHint()).isEqualTo("biology");
-        assertThat(parsed.uom()).isEqualTo("ml");
+        assertThat(parsed.normalizedQuery()).contains("5ml glass beakers");
     }
 
     @Test

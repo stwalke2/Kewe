@@ -51,7 +51,7 @@ public class FundingService {
         }
 
         return toDimensionDtos(businessObjectRepository.findAllById(ids), ids).stream()
-                .sorted(Comparator.comparing(ChargingLocationDto::type)
+                .sorted(Comparator.comparing(ChargingLocationDto::typeName)
                         .thenComparing(ChargingLocationDto::code)
                         .thenComparing(ChargingLocationDto::name))
                 .toList();
@@ -167,7 +167,7 @@ public class FundingService {
         return value == null || value.isBlank();
     }
 
-    public record ChargingLocationDto(String id, String code, String name, String type, String status) {}
+    public record ChargingLocationDto(String id, String code, String name, String typeName, String status) {}
     public record BudgetPlanDto(String id, String name) {}
     public record BudgetAmountDto(String id, double amount) {}
     public record AllocationSnapshotDto(String id, ChargingLocationDto allocatedTo, double amount) {}

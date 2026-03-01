@@ -231,9 +231,8 @@ export async function updateRequisitionDraft(id: string, payload: import('./api/
   return request<import('./api/types').RequisitionDraft>(`/requisitions/drafts/${id}`, { method: 'PUT', body: toBody(payload) });
 }
 
-export async function agentDraftRequisition(prompt: string, mode?: 'stub') {
-  const suffix = mode ? `?mode=${mode}` : '';
-  return request<import('./api/types').AgentDraftResponse>(`/agent/requisition-draft${suffix}`, { method: 'POST', body: toBody({ prompt }) });
+export async function agentDraftRequisition(prompt: string) {
+  return request<import('./api/types').AgentDraftResponse>(`/agent/requisition-draft`, { method: 'POST', body: toBody({ prompt }) });
 }
 
 export async function fetchAgentCapabilities() {
