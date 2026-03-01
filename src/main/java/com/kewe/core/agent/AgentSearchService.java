@@ -1,97 +1,113 @@
 package com.kewe.core.agent;
 
 import com.kewe.core.funding.FundingService;
-import com.kewe.core.requisition.RequisitionLine;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.LinkedHashMap;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Service
 public class AgentSearchService {
-    private static final Pattern PRICE_PATTERN = Pattern.compile("\\$(\\d+[\\d,]*(?:\\.\\d{2})?)");
-    private static final Pattern SKU_PATTERN = Pattern.compile("(?:sku|model|part)[:#\\s]*([A-Za-z0-9-]+)", Pattern.CASE_INSENSITIVE);
     private final PromptParser parser;
     private final FundingService fundingService;
-    private final SearchProviderClient searchProviderClient;
+    private final WebSearchProvider webSearchProvider;
     private final AgentSearchProperties properties;
 
     public AgentSearchService(PromptParser parser,
                               FundingService fundingService,
-                              SearchProviderClient searchProviderClient,
+                              WebSearchProvider webSearchProvider,
                               AgentSearchProperties properties) {
         this.parser = parser;
         this.fundingService = fundingService;
-        this.searchProviderClient = searchProviderClient;
+        this.webSearchProvider = webSearchProvider;
         this.properties = properties;
     }
 
     public CapabilitiesResponse capabilities() {
-        return new CapabilitiesResponse(properties.getSearchProvider().toLowerCase(Locale.ROOT), properties.hasSearchKey());
+        return new CapabilitiesResponse(
+                properties.getWebsearchProvider().toLowerCase(Locale.ROOT),
+                properties.hasSearchKey(),
+                properties.getSerpapiEngine(),
+                properties.getWebsearchCount());
     }
 
-    public AgentDraftResponse createDraft(String prompt, boolean stubMode) {
+    public AgentDraftResponse createDraft(String prompt) {
         PromptParser.ParsedPrompt parsed = parser.parse(prompt);
-        if (stubMode) {
-            return stubDraft(parsed, prompt);
-        }
-
         List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
         FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
-        Map<String, String> links = buildSearchLinks(parsed.item());
+        Map<String, String> searchLinks = buildSearchLinks(parsed.item());
 
-        Map<String, List<SupplierSearchResult>> results = new LinkedHashMap<>();
-        List<String> warnings;
-        if (!properties.hasSearchKey()) {
-            warnings = List.of("Search provider not configured; showing search links only.");
-            results.put("amazon", List.of());
-            results.put("fisher", List.of());
-            results.put("homedepot", List.of());
-        } else {
-            warnings = List.of();
-            results.put("amazon", searchSupplier("Amazon", "site:amazon.com " + parsed.item()));
-            results.put("fisher", searchSupplier("Fisher Scientific", "site:fishersci.com " + parsed.item()));
-            results.put("homedepot", searchSupplier("Home Depot", "site:homedepot.com " + parsed.item()));
-        }
+        WebSearchResponse response = webSearchProvider.search(new WebSearchRequest(parsed.normalizedQuery(), properties.getWebsearchCount()));
+        List<ProductSuggestion> top = prioritize(response.results(), parsed.keywords()).stream().limit(5).toList();
 
-        RequisitionLine prefilled = choosePrefillLine(parsed, results);
-        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", prefilled == null ? List.of() : List.of(prefilled));
-        return new AgentDraftResponse(parsed, suggested, links, results, warnings, draft);
+        return new AgentDraftResponse(parsed, searchLinks, top, response.warnings(), suggested);
     }
 
-    private List<SupplierSearchResult> searchSupplier(String supplierName, String query) {
-        int limit = properties.getBingResultCount();
-        return searchProviderClient.searchWeb(query, limit).stream()
-                .map(r -> new SupplierSearchResult(supplierName, r.title(), r.url(), null, null, r.snippet()))
+    static List<ProductSuggestion> prioritize(List<WebSearchResult> results, List<String> keywords) {
+        return results.stream()
+                .map(result -> new ScoredSuggestion(toSuggestion(result), scoreResult(result, keywords)))
+                .sorted(Comparator.comparingInt(ScoredSuggestion::score).reversed())
+                .map(ScoredSuggestion::suggestion)
                 .toList();
     }
 
-    private AgentDraftResponse stubDraft(PromptParser.ParsedPrompt parsed, String prompt) {
-        List<FundingService.ChargingLocationDto> chargingLocations = fundingService.findChargingLocations(null);
-        FundingService.ChargingLocationDto suggested = suggestCharging(parsed, chargingLocations);
-        Map<String, String> links = buildSearchLinks(parsed.item());
-
-        Map<String, List<SupplierSearchResult>> results = Map.of(
-                "amazon", List.of(stubResult("Amazon", parsed.item(), "https://www.amazon.com/s?k=beaker")),
-                "fisher", List.of(stubResult("Fisher Scientific", parsed.item(), "https://www.fishersci.com/us/en/catalog/search/products?keyword=beaker")),
-                "homedepot", List.of(stubResult("Home Depot", parsed.item(), "https://www.homedepot.com/s/beaker"))
-        );
-
-        RequisitionLine line = choosePrefillLine(parsed, results);
-        DraftPayload draft = new DraftPayload(titleFrom(parsed), prompt, "USD", line == null ? List.of() : List.of(line));
-        return new AgentDraftResponse(parsed, suggested, links, results, List.of("Stub mode enabled: returning canned supplier results."), draft);
+    static int scoreResult(WebSearchResult result, List<String> keywords) {
+        String url = Optional.ofNullable(result.url()).orElse("").toLowerCase(Locale.ROOT);
+        String title = Optional.ofNullable(result.title()).orElse("").toLowerCase(Locale.ROOT);
+        String snippet = Optional.ofNullable(result.snippet()).orElse("").toLowerCase(Locale.ROOT);
+        int score = 0;
+        if (url.contains("amazon.com") || url.contains("fishersci.com") || url.contains("homedepot.com")) {
+            score += 100;
+        }
+        if (keywords.stream().anyMatch(token -> title.contains(token.toLowerCase(Locale.ROOT)))) {
+            score += 20;
+        }
+        if (snippet.contains("500 ml") || snippet.contains("500ml")) {
+            score += 10;
+        }
+        if (url.contains("amazon.com") && !url.contains("/dp/")) {
+            score -= 50;
+        }
+        if (url.contains("homedepot.com") && !url.contains("/p/")) {
+            score -= 50;
+        }
+        if (url.contains("fishersci.com") && !(url.contains("/product/") || url.contains("/catalog/"))) {
+            score -= 50;
+        }
+        return score;
     }
 
-    private SupplierSearchResult stubResult(String supplier, String item, String url) {
-        return new SupplierSearchResult(supplier, "Stub result: " + item, url, BigDecimal.valueOf(19.99), "STUB-001", "stub snippet");
+    private static ProductSuggestion toSuggestion(WebSearchResult result) {
+        return new ProductSuggestion(
+                result.title(),
+                result.url(),
+                result.snippet(),
+                result.imageUrl(),
+                result.price(),
+                result.currency(),
+                supplierFromUrl(result.url())
+        );
+    }
+
+    private static String supplierFromUrl(String url) {
+        try {
+            String host = URI.create(url).getHost();
+            if (host == null) return "Other";
+            host = host.toLowerCase(Locale.ROOT);
+            if (host.contains("amazon.com")) return "Amazon";
+            if (host.contains("fishersci.com")) return "Fisher Scientific";
+            if (host.contains("homedepot.com")) return "Home Depot";
+            return "Other";
+        } catch (Exception e) {
+            return "Other";
+        }
     }
 
     private Map<String, String> buildSearchLinks(String keywords) {
@@ -104,57 +120,52 @@ public class AgentSearchService {
     }
 
     private FundingService.ChargingLocationDto suggestCharging(PromptParser.ParsedPrompt parsed, List<FundingService.ChargingLocationDto> eligible) {
-        String hint = Optional.ofNullable(parsed.orgHint()).orElse(parsed.item()).toLowerCase(Locale.ROOT);
-        return eligible.stream().min((left, right) -> score(left, hint) - score(right, hint)).orElse(null);
+        String orgHint = parsed.orgHint() == null ? "" : parsed.orgHint().trim().toLowerCase(Locale.ROOT);
+        if (orgHint.isBlank()) {
+            return null;
+        }
+
+        return eligible.stream().min((left, right) -> Integer.compare(matchScore(left, orgHint), matchScore(right, orgHint)))
+                .filter(item -> matchScore(item, orgHint) < 10)
+                .orElse(null);
     }
 
-    private int score(FundingService.ChargingLocationDto dto, String hint) {
-        String name = dto.name().toLowerCase(Locale.ROOT);
-        if (name.equals(hint)) return 0;
-        if (name.startsWith(hint)) return 1;
-        if (name.contains(hint)) return 2;
-        if (dto.code().toLowerCase(Locale.ROOT).contains(hint)) return 3;
+    private int matchScore(FundingService.ChargingLocationDto dto, String hint) {
+        if (dto.code() != null && dto.code().equalsIgnoreCase(hint)) return 0;
+        if (dto.name() != null && dto.name().equalsIgnoreCase(hint)) return 1;
+        if (dto.name() != null && dto.name().toLowerCase(Locale.ROOT).contains(hint)) return 2;
         return 10;
     }
 
-    private RequisitionLine choosePrefillLine(PromptParser.ParsedPrompt parsed, Map<String, List<SupplierSearchResult>> results) {
-        SupplierSearchResult chosen = results.getOrDefault("fisher", List.of()).stream().findFirst()
-                .or(() -> results.getOrDefault("homedepot", List.of()).stream().findFirst())
-                .or(() -> results.getOrDefault("amazon", List.of()).stream().findFirst())
-                .orElse(null);
-        if (chosen == null) return null;
-        RequisitionLine line = new RequisitionLine();
-        line.setLineNumber(1);
-        line.setDescription(chosen.title());
-        line.setQuantity(parsed.quantity());
-        line.setUom(parsed.uom());
-        line.setUnitPrice(chosen.price() == null ? null : chosen.price().doubleValue());
-        line.setAmount((chosen.price() == null ? BigDecimal.ZERO : chosen.price()).doubleValue() * parsed.quantity());
-        line.setSupplierName(chosen.supplierName());
-        line.setSupplierUrl(chosen.url());
-        line.setSupplierSku(chosen.sku());
-        return line;
-    }
-
-    private String titleFrom(PromptParser.ParsedPrompt parsed) { return "Requisition - " + parsed.item(); }
+    private record ScoredSuggestion(ProductSuggestion suggestion, int score) {}
 
     public static BigDecimal extractPrice(String text) {
-        Matcher matcher = PRICE_PATTERN.matcher(text == null ? "" : text);
+        if (text == null) return null;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("\\$(\\d+[\\d,]*(?:\\.\\d{2})?)").matcher(text);
         if (!matcher.find()) return null;
         return BigDecimal.valueOf(Double.parseDouble(matcher.group(1).replace(",", "")));
     }
 
     public static String extractSku(String text) {
-        Matcher matcher = SKU_PATTERN.matcher(text == null ? "" : text);
+        if (text == null) return null;
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("(?:sku|model|part)[:#\\s]*([A-Za-z0-9-]+)", java.util.regex.Pattern.CASE_INSENSITIVE).matcher(text);
         return matcher.find() ? matcher.group(1) : null;
     }
 
-    public record DraftPayload(String title, String memo, String currency, List<RequisitionLine> lines) {}
-    public record CapabilitiesResponse(String provider, boolean hasKey) {}
+    public record ProductSuggestion(String title,
+                                    String url,
+                                    String snippet,
+                                    String imageUrl,
+                                    BigDecimal price,
+                                    String currency,
+                                    String supplier) {
+    }
+
+    public record CapabilitiesResponse(String provider, boolean hasKey, String engine, int count) {}
+
     public record AgentDraftResponse(PromptParser.ParsedPrompt parsed,
-                                     FundingService.ChargingLocationDto suggestedChargingDimension,
                                      Map<String, String> searchLinks,
-                                     Map<String, List<SupplierSearchResult>> results,
+                                     List<ProductSuggestion> results,
                                      List<String> warnings,
-                                     DraftPayload draft) {}
+                                     FundingService.ChargingLocationDto suggestedChargingLocation) {}
 }

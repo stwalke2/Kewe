@@ -186,13 +186,14 @@ export interface ChargingLocation {
   status: string;
 }
 
-export interface SupplierResult {
-  supplierName: string;
+export interface ProductSuggestion {
   title: string;
   url: string;
-  price?: number;
-  sku?: string;
   snippet?: string;
+  imageUrl?: string;
+  price?: number;
+  currency?: string;
+  supplier: 'Amazon' | 'Fisher Scientific' | 'Home Depot' | 'Other' | string;
 }
 
 export interface SupplierDebug {
@@ -203,16 +204,17 @@ export interface SupplierDebug {
 }
 
 export interface AgentCapabilities {
-  provider: 'bing' | string;
+  provider: string;
   hasKey: boolean;
+  engine: string;
+  count: number;
 }
 
 export interface AgentDraftResponse {
-  parsed: { quantity: number; item: string; keywords: string[]; orgHint?: string; uom?: string };
-  suggestedChargingDimension?: ChargingLocation;
+  parsed: { quantity: number; item: string; keywords: string[]; orgHint?: string; normalizedQuery: string };
+  suggestedChargingLocation?: ChargingLocation;
   searchLinks: Record<string, string>;
-  results: Record<string, SupplierResult[]>;
-  draft: { title: string; memo: string; currency: string; lines: RequisitionLine[] };
+  results: ProductSuggestion[];
   warnings: string[];
 }
 
