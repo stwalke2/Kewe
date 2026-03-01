@@ -7,6 +7,7 @@ server:
   port: 8080
 
 kewe:
+  playwright-enabled: ${KEWE_PLAYWRIGHT_ENABLED:true}
   websearch-provider: ${KEWE_WEBSEARCH_PROVIDER:none}
   serpapi-key: ${KEWE_SERPAPI_KEY:}
   serpapi-engine: ${KEWE_SERPAPI_ENGINE:google}

@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties(prefix = "kewe")
 public class AgentSearchProperties {
+    private boolean playwrightEnabled = true;
     private String websearchProvider = "none";
     private String serpapiKey = "";
     private String serpapiEngine = "google";
@@ -15,6 +16,14 @@ public class AgentSearchProperties {
 
     public String getWebsearchProvider() {
         return websearchProvider == null || websearchProvider.isBlank() ? "none" : websearchProvider;
+    }
+
+    public boolean isPlaywrightEnabled() {
+        return playwrightEnabled;
+    }
+
+    public void setPlaywrightEnabled(boolean playwrightEnabled) {
+        this.playwrightEnabled = playwrightEnabled;
     }
 
     public void setWebsearchProvider(String websearchProvider) {
