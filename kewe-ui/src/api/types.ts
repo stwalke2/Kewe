@@ -138,6 +138,7 @@ export interface BusinessObjectInstance {
   code: string;
   name: string;
   description?: string;
+  status: string;
   requiredOnFinancialTransactions?: boolean;
   requiredBalancing?: boolean;
   budgetControlEnabled?: boolean;
@@ -145,7 +146,6 @@ export interface BusinessObjectInstance {
   visibility?: string;
   hierarchies?: HierarchyAssignment[];
   roles?: Array<{ roleCode?: string; actorObjectId?: string; effectiveDate?: string; endDate?: string; status?: string }>;
-  status: string;
   accountingBudgetOverrides: Record<string, BusinessObjectFieldOverride>;
 }
 
@@ -163,7 +163,6 @@ export interface RequisitionLine {
   chargingBusinessDimensionId?: string;
   chargingBusinessDimensionCode?: string;
   chargingBusinessDimensionName?: string;
-  chargingInstructions?: string;
 }
 
 export interface RequisitionDraft {
@@ -172,13 +171,11 @@ export interface RequisitionDraft {
   title: string;
   memo?: string;
   requesterName: string;
-  expectedOutput?: string;
   currency: string;
   needByDate?: string;
   chargingBusinessDimensionId?: string;
   chargingBusinessDimensionCode?: string;
   chargingBusinessDimensionName?: string;
-  budgetPlanId?: string;
   lines: RequisitionLine[];
   totals: { subtotal: number };
 }
@@ -187,8 +184,7 @@ export interface ChargingLocation {
   id: string;
   code: string;
   name: string;
-  typeName: string;
-  status: string;
+  type: string;
 }
 
 export interface ProductSuggestion {

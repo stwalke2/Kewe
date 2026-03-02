@@ -20,7 +20,6 @@ function formatMoney(value?: number): string {
   return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' });
 }
 
-const budgetPlans = ['FY26 Operating', 'FY26 Capital', 'FY25 Operating'];
 
 type FundingRow = {
   fundingLocation: string;
@@ -33,6 +32,20 @@ function displayLocation(location?: ChargingLocation): string {
   return location ? `${location.code} — ${location.name}` : '—';
 }
 
+function inferChargingLocationFromPrompt(promptText: string, eligibleLocations: ChargingLocation[]): ChargingLocation | undefined {
+  const promptValue = promptText.trim();
+  if (!promptValue) return undefined;
+
+  const chargeToMatch = promptValue.match(/charge to\s+([^.,;\n]+)/i);
+  const inferredText = (chargeToMatch?.[1] ?? promptValue).trim();
+
+  const codeMatch = eligibleLocations.find((location) => location.code.toLowerCase() === inferredText.toLowerCase());
+  if (codeMatch) return codeMatch;
+
+  const lowered = inferredText.toLowerCase();
+  return eligibleLocations.find((location) => location.name.toLowerCase().includes(lowered));
+}
+
 export function CreateRequisitionPage() {
   const [draft, setDraft] = useState<RequisitionDraft | null>(null);
   const [prompt, setPrompt] = useState('');
@@ -43,22 +56,14 @@ export function CreateRequisitionPage() {
   const [capabilities, setCapabilities] = useState<AgentCapabilities | null>(null);
   const [assistantLocation, setAssistantLocation] = useState<ChargingLocation | null>(null);
   const [allLinesChargingLocationId, setAllLinesChargingLocationId] = useState('');
-  const [allLinesChargingInstructions, setAllLinesChargingInstructions] = useState('');
   const [resultQuantities, setResultQuantities] = useState<Record<string, number>>({});
   const [fundingRows, setFundingRows] = useState<FundingRow[]>([]);
 
   useEffect(() => {
-    void createRequisitionDraft().then((nextDraft) => {
-      const normalized = nextDraft.budgetPlanId ? nextDraft : { ...nextDraft, budgetPlanId: 'FY26 Operating' };
-      setDraft(normalized);
-    });
+    void createRequisitionDraft().then(setDraft);
     void fetchAgentCapabilities().then(setCapabilities).catch(() => setCapabilities(null));
+    void fetchChargingLocations().then(setChargingLocations);
   }, []);
-
-  useEffect(() => {
-    if (!draft?.budgetPlanId) return;
-    void fetchChargingLocations(draft.budgetPlanId).then(setChargingLocations);
-  }, [draft?.budgetPlanId]);
 
   const subtotal = useMemo(() => draft?.lines.reduce((sum, line) => sum + (line.amount || 0), 0) ?? 0, [draft]);
 
@@ -90,7 +95,7 @@ export function CreateRequisitionPage() {
       locationIds.map(async (id) => ({
         id,
         amount: groupedAmounts[id],
-        snapshot: await fetchFundingSnapshot(id, draft.budgetPlanId, groupedAmounts[id]),
+        snapshot: await fetchFundingSnapshot(id, undefined, groupedAmounts[id]),
       })),
     ).then((rows) => {
       const nextRows: FundingRow[] = [];
@@ -119,10 +124,6 @@ export function CreateRequisitionPage() {
     });
   }, [draft]);
 
-  function chargingInstructionTemplate(location?: ChargingLocation | null): string {
-    if (!location) return '';
-    return `Charge to ${location.code} ${location.name}`.trim();
-  }
 
   function selectedLocation(locationId?: string): ChargingLocation | undefined {
     return chargingLocations.find((item) => item.id === locationId);
@@ -136,7 +137,6 @@ export function CreateRequisitionPage() {
       chargingBusinessDimensionId: location.id,
       chargingBusinessDimensionCode: location.code,
       chargingBusinessDimensionName: location.name,
-      chargingInstructions: line.chargingInstructions || chargingInstructionTemplate(location),
     };
   }
 
@@ -154,7 +154,7 @@ export function CreateRequisitionPage() {
 
       const inferred = response.suggestedChargingLocation
         ? chargingLocations.find((location) => location.id === response.suggestedChargingLocation?.id)
-        : undefined;
+        : inferChargingLocationFromPrompt(prompt, chargingLocations);
 
       if (inferred) {
         setAssistantLocation(inferred);
@@ -171,7 +171,6 @@ export function CreateRequisitionPage() {
 
       if (inferred) {
         setAllLinesChargingLocationId(inferred.id);
-        setAllLinesChargingInstructions(chargingInstructionTemplate(inferred));
       }
     } catch {
       setWarnings(['Could not draft requisition. Verify backend is running and retry.']);
@@ -194,7 +193,6 @@ export function CreateRequisitionPage() {
       amount: (unitPrice ?? 0) * quantity,
       supplierName: result.supplier,
       supplierUrl: result.url,
-      chargingInstructions: allLinesChargingInstructions,
     });
     setDraft({ ...draft, lines: [...draft.lines, line] });
   }
@@ -208,7 +206,6 @@ export function CreateRequisitionPage() {
       uom: 'ea',
       amount: 0,
       supplierName: 'Manual',
-      chargingInstructions: allLinesChargingInstructions,
     });
     setDraft({ ...draft, lines: [...draft.lines, line] });
   }
@@ -226,13 +223,6 @@ export function CreateRequisitionPage() {
     setDraft({ ...draft, lines });
   }
 
-  function applyChargingInstructionsToAllLines() {
-    if (!draft) return;
-    setDraft({
-      ...draft,
-      lines: draft.lines.map((line) => ({ ...line, chargingInstructions: allLinesChargingInstructions })),
-    });
-  }
 
   if (!draft) return <div className="card">Loading draft…</div>;
 
@@ -305,11 +295,6 @@ export function CreateRequisitionPage() {
               </select>
             </label>
             <button type="button" className="btn-secondary" onClick={applyChargingLocationToAllLines}>Apply to all lines</button>
-            <label>
-              Charging instructions for all lines
-              <input value={allLinesChargingInstructions} onChange={(e) => setAllLinesChargingInstructions(e.target.value)} />
-            </label>
-            <button type="button" className="btn-secondary" onClick={applyChargingInstructionsToAllLines}>Apply to all lines</button>
           </div>
 
           <div className="table-scroll-wrap">
@@ -324,7 +309,6 @@ export function CreateRequisitionPage() {
                   <th>Supplier</th>
                   <th>Link</th>
                   <th>Charging Location</th>
-                  <th>Charging Instructions</th>
                   <th>Actions</th>
                 </tr>
               </thead>
@@ -376,9 +360,6 @@ export function CreateRequisitionPage() {
                         ))}
                       </select>
                     </td>
-                    <td><input value={line.chargingInstructions ?? ''} onChange={(e) => {
-                      const lines = [...draft.lines]; lines[idx] = { ...line, chargingInstructions: e.target.value }; setDraft({ ...draft, lines });
-                    }} /></td>
                     <td><button type="button" onClick={() => {
                       setDraft({
                         ...draft,
@@ -391,6 +372,7 @@ export function CreateRequisitionPage() {
             </table>
           </div>
           <strong>Subtotal: {formatMoney(subtotal)}</strong>
+          <p className="subtle">Dev: charging locations loaded = {chargingLocations.length}</p>
         </section>
 
         <section className="card section-card table-card">
@@ -423,17 +405,9 @@ export function CreateRequisitionPage() {
 
         <section className="card section-card">
           <h3>Requisition Information</h3>
-          <label>
-            Budget Plan
-            <select value={draft.budgetPlanId ?? ''} onChange={(e) => setDraft({ ...draft, budgetPlanId: e.target.value })}>
-              <option value="">Select budget plan</option>
-              {budgetPlans.map((plan) => <option key={plan} value={plan}>{plan}</option>)}
-            </select>
-          </label>
           <input value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder="Requisition name" />
           <input value={draft.requesterName} onChange={(e) => setDraft({ ...draft, requesterName: e.target.value })} placeholder="Requestor" />
           <input value={draft.memo ?? ''} onChange={(e) => setDraft({ ...draft, memo: e.target.value })} placeholder="Business purpose / memo" />
-          <input value={draft.expectedOutput ?? ''} onChange={(e) => setDraft({ ...draft, expectedOutput: e.target.value })} placeholder="Expected output" />
         </section>
       </div>
     </div>

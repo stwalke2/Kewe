@@ -4,6 +4,8 @@ import com.kewe.core.businessobjects.BusinessObjectInstance;
 import com.kewe.core.businessobjects.BusinessObjectRepository;
 import com.kewe.core.businessobjects.BusinessObjectType;
 import com.kewe.core.businessobjects.BusinessObjectTypeRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
@@ -18,6 +20,7 @@ import java.util.Set;
 
 @Service
 public class FundingService {
+    private static final Logger log = LoggerFactory.getLogger(FundingService.class);
     private final BudgetRecordRepository budgetRepository;
     private final AllocationRecordRepository allocationRepository;
     private final BusinessObjectRepository businessObjectRepository;
@@ -46,11 +49,12 @@ public class FundingService {
         allocations.stream().map(AllocationRecord::getAllocatedToDimensionId).filter(Objects::nonNull).forEach(ids::add);
 
         if (ids.isEmpty()) {
+            log.warn("No eligible charging locations found. budgetPlanId={}", budgetPlanId);
             return List.of();
         }
 
         return toDimensionDtos(businessObjectRepository.findAllById(ids), ids).stream()
-                .sorted(Comparator.comparing(ChargingLocationDto::typeName)
+                .sorted(Comparator.comparing(ChargingLocationDto::type)
                         .thenComparing(ChargingLocationDto::code)
                         .thenComparing(ChargingLocationDto::name))
                 .toList();
@@ -176,7 +180,7 @@ public class FundingService {
         Map<String, String> typeNames = loadTypeNames();
         return dimensions.stream()
                 .filter(item -> selectedIds.contains(item.getId()))
-                .map(item -> new ChargingLocationDto(item.getId(), item.getCode(), item.getName(), typeNames.getOrDefault(item.getTypeCode(), item.getTypeCode()), item.getStatus()))
+                .map(item -> new ChargingLocationDto(item.getId(), item.getCode(), item.getName(), typeNames.getOrDefault(item.getTypeCode(), item.getTypeCode())))
                 .toList();
     }
 
@@ -185,7 +189,7 @@ public class FundingService {
             return null;
         }
         Map<String, String> typeNames = loadTypeNames();
-        return new ChargingLocationDto(item.getId(), item.getCode(), item.getName(), typeNames.getOrDefault(item.getTypeCode(), item.getTypeCode()), item.getStatus());
+        return new ChargingLocationDto(item.getId(), item.getCode(), item.getName(), typeNames.getOrDefault(item.getTypeCode(), item.getTypeCode()));
     }
 
     private Map<String, String> loadTypeNames() {
@@ -207,7 +211,7 @@ public class FundingService {
         return value == null || value.isBlank();
     }
 
-    public record ChargingLocationDto(String id, String code, String name, String typeName, String status) {}
+    public record ChargingLocationDto(String id, String code, String name, String type) {}
     public record BudgetPlanDto(String id, String name) {}
     public record BudgetAmountDto(String id, double amount) {}
     public record AllocationSnapshotDto(String id, ChargingLocationDto allocatedTo, double amount) {}
