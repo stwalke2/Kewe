@@ -160,6 +160,7 @@ export interface RequisitionLine {
   supplierName: string;
   supplierUrl?: string;
   supplierSku?: string;
+  chargingInstructions?: string;
 }
 
 export interface RequisitionDraft {
@@ -223,9 +224,19 @@ export interface FundingSnapshot {
   budgetPlan?: { id: string; name: string };
   budget?: { id: string; amount: number };
   allocationsFrom: Array<{ id: string; allocatedTo?: ChargingLocation; amount: number }>;
+  allocationsTo: Array<{ id: string; allocatedTo?: ChargingLocation; amount: number }>;
+  fundingSources: Array<{
+    fundingLocation?: ChargingLocation;
+    chargingLocation?: ChargingLocation;
+    proposedChargeAmount: number;
+    projectedChargingAvailable?: number;
+    projectedFundingAvailable?: number;
+  }>;
   totals: {
     budgetTotal?: number;
     allocatedFromTotal: number;
+    allocatedToTotal: number;
     remainingBeforeReq?: number;
+    chargingRemainingBeforeReq?: number;
   };
 }

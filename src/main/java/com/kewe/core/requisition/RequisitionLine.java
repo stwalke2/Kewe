@@ -10,6 +10,7 @@ public class RequisitionLine {
     private String supplierName;
     private String supplierUrl;
     private String supplierSku;
+    private String chargingInstructions;
 
     public int getLineNumber() { return lineNumber; }
     public void setLineNumber(int lineNumber) { this.lineNumber = lineNumber; }
@@ -29,4 +30,6 @@ public class RequisitionLine {
     public void setSupplierUrl(String supplierUrl) { this.supplierUrl = supplierUrl; }
     public String getSupplierSku() { return supplierSku; }
     public void setSupplierSku(String supplierSku) { this.supplierSku = supplierSku; }
+    public String getChargingInstructions() { return chargingInstructions; }
+    public void setChargingInstructions(String chargingInstructions) { this.chargingInstructions = chargingInstructions; }
 }

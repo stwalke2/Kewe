@@ -39,6 +39,7 @@ class FundingSnapshotIntegrationTest {
     @Autowired private AllocationRecordRepository allocationRepository;
 
     private String biologyId;
+    private String pdId;
 
     @BeforeEach
     void setup() {
@@ -60,6 +61,7 @@ class FundingSnapshotIntegrationTest {
         pd = businessObjectRepository.save(pd);
 
         biologyId = biology.getId();
+        pdId = pd.getId();
 
         BudgetRecord budget = new BudgetRecord();
         budget.setBusinessDimensionId(biology.getId()); budget.setBudgetPlanId("FY26-OPERATING"); budget.setBudgetPlanName("FY26 Operating"); budget.setAmount(10000);
@@ -81,5 +83,21 @@ class FundingSnapshotIntegrationTest {
                 .andExpect(jsonPath("$.allocationsFrom[0].allocatedTo.code").value("AT0001"))
                 .andExpect(jsonPath("$.totals.allocatedFromTotal").value(5500.0))
                 .andExpect(jsonPath("$.totals.remainingBeforeReq").value(4500.0));
+    }
+
+    @Test
+    void shouldIncludeFundingSourcesForAllocationBackedChargingLocation() throws Exception {
+        mockMvc.perform(get("/api/funding-snapshot")
+                        .param("chargingDimensionId", pdId)
+                        .param("budgetPlan", "FY26 Operating")
+                        .param("proposedAmount", "1000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.chargingDimension.code").value("AT0001"))
+                .andExpect(jsonPath("$.allocationsTo[0].allocatedTo.code").value("CC0001"))
+                .andExpect(jsonPath("$.fundingSources[0].fundingLocation.code").value("CC0001"))
+                .andExpect(jsonPath("$.fundingSources[0].chargingLocation.code").value("AT0001"))
+                .andExpect(jsonPath("$.fundingSources[0].proposedChargeAmount").value(1000.0))
+                .andExpect(jsonPath("$.fundingSources[0].projectedChargingAvailable").value(4500.0))
+                .andExpect(jsonPath("$.fundingSources[0].projectedFundingAvailable").value(3500.0));
     }
 }

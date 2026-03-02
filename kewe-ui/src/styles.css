@@ -267,6 +267,13 @@ button, .btn {
 }
 button:disabled { opacity: 0.55; cursor: not-allowed; }
 
+
+.requisitions-page textarea,
+.requisitions-page input { margin-bottom: 0.5rem; }
+.button-row { display: flex; gap: 0.5rem; margin: 0.5rem 0; flex-wrap: wrap; }
+.grid-two { display: grid; grid-template-columns: 1.35fr 1fr; gap: 1rem; align-items: start; }
+.text-danger { color: #b42318; }
+
 .segmented-control { display: inline-flex; background: #f2f4f7; border: 1px solid var(--border); border-radius: 11px; padding: 0.2rem; gap: 0.2rem; }
 .segment { border: 0; background: transparent; color: #475467; padding: 0.42rem 0.72rem; border-radius: 8px; transition: background-color 180ms ease, color 180ms ease, box-shadow 180ms ease, transform 160ms ease; }
 .segment.active { background: #fff; color: #101828; box-shadow: 0 1px 3px rgba(16,24,40,0.14); }
@@ -471,7 +478,7 @@ th:hover { background: #f3f6fb; color: #475467; }
   }
   .sidebar { display: none; }
   main { width: 100%; padding: 1rem; }
-  .detail-grid, .form-grid { grid-template-columns: 1fr; }
+  .detail-grid, .form-grid, .grid-two { grid-template-columns: 1fr; }
   .filters-row, .table-tools { flex-direction: column; align-items: stretch; }
   .accounting-search { max-width: none; }
   .filter-panel { align-items: stretch; }
