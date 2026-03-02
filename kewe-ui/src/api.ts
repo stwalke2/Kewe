@@ -239,8 +239,8 @@ export async function fetchAgentCapabilities() {
   return request<import('./api/types').AgentCapabilities>('/agent/capabilities');
 }
 
-export async function fetchChargingLocations(budgetPlanId?: string) {
-  return request<import('./api/types').ChargingLocation[]>(`/charging-locations${budgetPlanId ? `?budgetPlanId=${encodeURIComponent(budgetPlanId)}` : ''}`);
+export async function fetchChargingLocations() {
+  return request<import('./api/types').ChargingLocation[]>('/charging-locations');
 }
 
 export async function fetchFundingSnapshot(chargingDimensionId: string, budgetPlan: string | undefined, proposedAmount?: number) {

@@ -12,13 +12,11 @@ public class RequisitionDraft extends CanonicalObject {
     private String title;
     private String memo;
     private String requesterName;
-    private String expectedOutput;
     private String currency;
     private LocalDate needByDate;
     private String chargingBusinessDimensionId;
     private String chargingBusinessDimensionCode;
     private String chargingBusinessDimensionName;
-    private String budgetPlanId;
     private List<RequisitionLine> lines = new ArrayList<>();
     private RequisitionTotals totals = new RequisitionTotals();
 
@@ -28,8 +26,6 @@ public class RequisitionDraft extends CanonicalObject {
     public void setMemo(String memo) { this.memo = memo; }
     public String getRequesterName() { return requesterName; }
     public void setRequesterName(String requesterName) { this.requesterName = requesterName; }
-    public String getExpectedOutput() { return expectedOutput; }
-    public void setExpectedOutput(String expectedOutput) { this.expectedOutput = expectedOutput; }
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
     public LocalDate getNeedByDate() { return needByDate; }
@@ -40,8 +36,6 @@ public class RequisitionDraft extends CanonicalObject {
     public void setChargingBusinessDimensionCode(String chargingBusinessDimensionCode) { this.chargingBusinessDimensionCode = chargingBusinessDimensionCode; }
     public String getChargingBusinessDimensionName() { return chargingBusinessDimensionName; }
     public void setChargingBusinessDimensionName(String chargingBusinessDimensionName) { this.chargingBusinessDimensionName = chargingBusinessDimensionName; }
-    public String getBudgetPlanId() { return budgetPlanId; }
-    public void setBudgetPlanId(String budgetPlanId) { this.budgetPlanId = budgetPlanId; }
     public List<RequisitionLine> getLines() { return lines; }
     public void setLines(List<RequisitionLine> lines) { this.lines = lines; }
     public RequisitionTotals getTotals() { return totals; }

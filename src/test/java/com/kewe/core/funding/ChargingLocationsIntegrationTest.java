@@ -79,6 +79,8 @@ class ChargingLocationsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.code == 'CC0001')]").exists())
                 .andExpect(jsonPath("$[?(@.id == '%s')]", eligibleFromAllocation).exists())
-                .andExpect(jsonPath("$[?(@.code == 'CC0003')]").doesNotExist());
+                .andExpect(jsonPath("$[0].type").exists())
+                .andExpect(jsonPath("$[?(@.code == 'CC0003')]").doesNotExist())
+                .andExpect(jsonPath("$.length()").value(2));
     }
 }
