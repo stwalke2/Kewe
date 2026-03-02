@@ -100,4 +100,20 @@ class FundingSnapshotIntegrationTest {
                 .andExpect(jsonPath("$.fundingSources[0].projectedChargingAvailable").value(4500.0))
                 .andExpect(jsonPath("$.fundingSources[0].projectedFundingAvailable").value(3500.0));
     }
+
+    @Test
+    void chargingLocationsShouldOnlyIncludeBudgetOrAllocationDestinations() throws Exception {
+        BusinessObjectInstance project = new BusinessObjectInstance();
+        project.setTypeCode("COST_CENTER"); project.setObjectKind("Business Dimension");
+        project.setCode("PJ0001"); project.setName("Unfunded Project"); project.setStatus("Active");
+        businessObjectRepository.save(project);
+
+        mockMvc.perform(get("/api/charging-locations").param("budgetPlanId", "FY26-OPERATING"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.code=='CC0001')]").exists())
+                .andExpect(jsonPath("$[?(@.code=='AT0001')]").exists())
+                .andExpect(jsonPath("$[?(@.code=='PJ0001')]").isEmpty());
+    }
+
 }

@@ -43,7 +43,6 @@ public class FundingService {
 
         Set<String> ids = new HashSet<>();
         budgets.stream().map(BudgetRecord::getBusinessDimensionId).filter(Objects::nonNull).forEach(ids::add);
-        allocations.stream().map(AllocationRecord::getAllocatedFromDimensionId).filter(Objects::nonNull).forEach(ids::add);
         allocations.stream().map(AllocationRecord::getAllocatedToDimensionId).filter(Objects::nonNull).forEach(ids::add);
 
         if (ids.isEmpty()) {

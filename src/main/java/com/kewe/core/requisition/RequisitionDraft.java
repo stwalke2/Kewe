@@ -12,6 +12,7 @@ public class RequisitionDraft extends CanonicalObject {
     private String title;
     private String memo;
     private String requesterName;
+    private String expectedOutput;
     private String currency;
     private LocalDate needByDate;
     private String chargingBusinessDimensionId;
@@ -27,6 +28,8 @@ public class RequisitionDraft extends CanonicalObject {
     public void setMemo(String memo) { this.memo = memo; }
     public String getRequesterName() { return requesterName; }
     public void setRequesterName(String requesterName) { this.requesterName = requesterName; }
+    public String getExpectedOutput() { return expectedOutput; }
+    public void setExpectedOutput(String expectedOutput) { this.expectedOutput = expectedOutput; }
     public String getCurrency() { return currency; }
     public void setCurrency(String currency) { this.currency = currency; }
     public LocalDate getNeedByDate() { return needByDate; }
