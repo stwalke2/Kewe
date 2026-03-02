@@ -10,6 +10,9 @@ public class RequisitionLine {
     private String supplierName;
     private String supplierUrl;
     private String supplierSku;
+    private String chargingBusinessDimensionId;
+    private String chargingBusinessDimensionCode;
+    private String chargingBusinessDimensionName;
     private String chargingInstructions;
 
     public int getLineNumber() { return lineNumber; }
@@ -30,6 +33,12 @@ public class RequisitionLine {
     public void setSupplierUrl(String supplierUrl) { this.supplierUrl = supplierUrl; }
     public String getSupplierSku() { return supplierSku; }
     public void setSupplierSku(String supplierSku) { this.supplierSku = supplierSku; }
+    public String getChargingBusinessDimensionId() { return chargingBusinessDimensionId; }
+    public void setChargingBusinessDimensionId(String chargingBusinessDimensionId) { this.chargingBusinessDimensionId = chargingBusinessDimensionId; }
+    public String getChargingBusinessDimensionCode() { return chargingBusinessDimensionCode; }
+    public void setChargingBusinessDimensionCode(String chargingBusinessDimensionCode) { this.chargingBusinessDimensionCode = chargingBusinessDimensionCode; }
+    public String getChargingBusinessDimensionName() { return chargingBusinessDimensionName; }
+    public void setChargingBusinessDimensionName(String chargingBusinessDimensionName) { this.chargingBusinessDimensionName = chargingBusinessDimensionName; }
     public String getChargingInstructions() { return chargingInstructions; }
     public void setChargingInstructions(String chargingInstructions) { this.chargingInstructions = chargingInstructions; }
 }

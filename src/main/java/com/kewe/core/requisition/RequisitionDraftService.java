@@ -44,6 +44,7 @@ public class RequisitionDraftService {
         current.setTitle(payload.getTitle());
         current.setMemo(payload.getMemo());
         current.setRequesterName(payload.getRequesterName());
+        current.setExpectedOutput(payload.getExpectedOutput());
         current.setCurrency(payload.getCurrency());
         current.setNeedByDate(payload.getNeedByDate());
         current.setBudgetPlanId(payload.getBudgetPlanId());

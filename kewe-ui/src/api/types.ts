@@ -160,6 +160,9 @@ export interface RequisitionLine {
   supplierName: string;
   supplierUrl?: string;
   supplierSku?: string;
+  chargingBusinessDimensionId?: string;
+  chargingBusinessDimensionCode?: string;
+  chargingBusinessDimensionName?: string;
   chargingInstructions?: string;
 }
 
@@ -169,6 +172,7 @@ export interface RequisitionDraft {
   title: string;
   memo?: string;
   requesterName: string;
+  expectedOutput?: string;
   currency: string;
   needByDate?: string;
   chargingBusinessDimensionId?: string;
