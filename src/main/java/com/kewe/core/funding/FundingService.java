@@ -57,11 +57,11 @@ public class FundingService {
                 .toList();
     }
 
-    public FundingSnapshotResponse fundingSnapshot(String chargingDimensionId, String budgetPlan) {
+    public FundingSnapshotResponse fundingSnapshot(String chargingDimensionId, String budgetPlan, Double proposedAmount) {
         BusinessObjectInstance charging = businessObjectRepository.findById(chargingDimensionId).orElse(null);
         if (charging == null) {
-            return new FundingSnapshotResponse(null, null, null, List.of(),
-                    new FundingTotalsDto(null, 0, null));
+            return new FundingSnapshotResponse(null, null, null, List.of(), List.of(),
+                    List.of(), new FundingTotalsDto(null, 0, 0, null, null));
         }
 
         List<BudgetRecord> budgetsForDimension = budgetRepository.findByBusinessDimensionId(chargingDimensionId);
@@ -76,21 +76,62 @@ public class FundingService {
 
         List<AllocationSnapshotDto> from = toAllocationViews(fromAllocations, true);
 
+        List<AllocationRecord> toAllocations = isBlank(resolvedPlanId)
+                ? allocationRepository.findByAllocatedToDimensionId(chargingDimensionId)
+                : allocationRepository.findByAllocatedToDimensionIdAndBudgetPlanId(chargingDimensionId, resolvedPlanId);
+        List<AllocationSnapshotDto> to = toAllocationViews(toAllocations, false);
+
         Double budgetTotal = matchedBudget.map(BudgetRecord::getAmount).orElse(null);
         double allocatedFromTotal = from.stream().mapToDouble(AllocationSnapshotDto::amount).sum();
+        double allocatedToTotal = to.stream().mapToDouble(AllocationSnapshotDto::amount).sum();
         Double remaining = budgetTotal == null ? null : budgetTotal - allocatedFromTotal;
+        Double chargingRemainingBeforeReq = remaining != null ? remaining : allocatedToTotal - allocatedFromTotal;
+        double requestAmount = proposedAmount == null ? 0 : proposedAmount;
 
         BudgetPlanDto budgetPlanDto = matchedBudget
                 .map(value -> new BudgetPlanDto(value.getBudgetPlanId(), value.getBudgetPlanName()))
                 .orElseGet(() -> isBlank(resolvedPlanId) ? null : new BudgetPlanDto(resolvedPlanId, resolvedPlanId));
+
+        List<FundingSourceSnapshotDto> fundingSources = toAllocations.stream()
+                .map(allocation -> {
+                    BusinessObjectInstance sourceDimension = businessObjectRepository.findById(allocation.getAllocatedFromDimensionId()).orElse(null);
+                    Double sourceRemainingBeforeReq = budgetRemainingBeforeReq(allocation.getAllocatedFromDimensionId(), resolvedPlanId);
+                    return new FundingSourceSnapshotDto(
+                            toDimensionDto(sourceDimension),
+                            toDimensionDto(charging),
+                            requestAmount,
+                            chargingRemainingBeforeReq == null ? null : chargingRemainingBeforeReq - requestAmount,
+                            sourceRemainingBeforeReq == null ? null : sourceRemainingBeforeReq - requestAmount
+                    );
+                })
+                .toList();
 
         return new FundingSnapshotResponse(
                 toDimensionDto(charging),
                 budgetPlanDto,
                 matchedBudget.map(value -> new BudgetAmountDto(value.getId(), value.getAmount())).orElse(null),
                 from,
-                new FundingTotalsDto(budgetTotal, allocatedFromTotal, remaining)
+                to,
+                fundingSources,
+                new FundingTotalsDto(budgetTotal, allocatedFromTotal, allocatedToTotal, remaining, chargingRemainingBeforeReq)
         );
+    }
+
+
+
+    private Double budgetRemainingBeforeReq(String businessDimensionId, String budgetPlanId) {
+        Optional<BudgetRecord> budget = resolveBudgetByPlan(
+                budgetRepository.findByBusinessDimensionId(businessDimensionId),
+                budgetPlanId
+        );
+        if (budget.isEmpty()) {
+            return null;
+        }
+        List<AllocationRecord> outgoing = isBlank(budgetPlanId)
+                ? allocationRepository.findByAllocatedFromDimensionId(businessDimensionId)
+                : allocationRepository.findByAllocatedFromDimensionIdAndBudgetPlanId(businessDimensionId, budgetPlanId);
+        double allocated = outgoing.stream().mapToDouble(AllocationRecord::getAmount).sum();
+        return budget.get().getAmount() - allocated;
     }
 
     private Optional<String> resolvePlanIdFromAllocations(String chargingDimensionId, String budgetPlan) {
@@ -171,10 +212,21 @@ public class FundingService {
     public record BudgetPlanDto(String id, String name) {}
     public record BudgetAmountDto(String id, double amount) {}
     public record AllocationSnapshotDto(String id, ChargingLocationDto allocatedTo, double amount) {}
-    public record FundingTotalsDto(Double budgetTotal, double allocatedFromTotal, Double remainingBeforeReq) {}
+    public record FundingSourceSnapshotDto(ChargingLocationDto fundingLocation,
+                                           ChargingLocationDto chargingLocation,
+                                           double proposedChargeAmount,
+                                           Double projectedChargingAvailable,
+                                           Double projectedFundingAvailable) {}
+    public record FundingTotalsDto(Double budgetTotal,
+                                   double allocatedFromTotal,
+                                   double allocatedToTotal,
+                                   Double remainingBeforeReq,
+                                   Double chargingRemainingBeforeReq) {}
     public record FundingSnapshotResponse(ChargingLocationDto chargingDimension,
                                           BudgetPlanDto budgetPlan,
                                           BudgetAmountDto budget,
                                           List<AllocationSnapshotDto> allocationsFrom,
+                                          List<AllocationSnapshotDto> allocationsTo,
+                                          List<FundingSourceSnapshotDto> fundingSources,
                                           FundingTotalsDto totals) {}
 }
