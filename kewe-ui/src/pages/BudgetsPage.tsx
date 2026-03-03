@@ -1,8 +1,6 @@
 import { Fragment, useEffect, useMemo, useState } from 'react';
-import { fetchBusinessObjects, getErrorDetails } from '../api';
+import { createAllocation, createBudget, deleteAllocation as deleteAllocationApi, deleteBudget as deleteBudgetApi, fetchBudgetData, fetchBusinessObjects, getErrorDetails, updateAllocation, updateBudget } from '../api';
 import type { ApiErrorDetails, BusinessObjectInstance } from '../api/types';
-
-const BUDGETS_STORAGE_KEY = 'kewe.budgets';
 
 type AllocationRow = {
   id: string;
@@ -51,23 +49,8 @@ function emptyAllocationForm(): AllocationForm {
   return { businessDimensionId: '', amount: '' };
 }
 
-function loadStoredBudgets(): BudgetRow[] {
-  if (typeof window === 'undefined') return [];
-
-  const rawBudgets = window.localStorage.getItem(BUDGETS_STORAGE_KEY);
-  if (!rawBudgets) return [];
-
-  try {
-    const parsedBudgets = JSON.parse(rawBudgets);
-    if (!Array.isArray(parsedBudgets)) return [];
-    return parsedBudgets as BudgetRow[];
-  } catch {
-    return [];
-  }
-}
-
 export function BudgetsPage() {
-  const [budgets, setBudgets] = useState<BudgetRow[]>(() => loadStoredBudgets());
+  const [budgets, setBudgets] = useState<BudgetRow[]>([]);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [budgetModalId, setBudgetModalId] = useState<string | null>(null);
   const [budgetModalMode, setBudgetModalMode] = useState<'create' | 'edit' | null>(null);
@@ -84,9 +67,6 @@ export function BudgetsPage() {
     void loadDimensions();
   }, []);
 
-  useEffect(() => {
-    window.localStorage.setItem(BUDGETS_STORAGE_KEY, JSON.stringify(budgets));
-  }, [budgets]);
 
   const dimensionLabelById = useMemo(() => new Map(dimensionOptions.map((option) => [option.id, option.label])), [dimensionOptions]);
 
@@ -110,12 +90,41 @@ export function BudgetsPage() {
       const activeDimensions = businessDimensions
         .filter((dimension) => dimension.status.trim().toLowerCase() === 'active')
         .sort((left, right) => `${left.code} ${left.name}`.localeCompare(`${right.code} ${right.name}`));
-      setDimensionOptions(activeDimensions.map((dimension) => ({ id: dimension.id, label: toDimensionLabel(dimension) })));
+      const options = activeDimensions.map((dimension) => ({ id: dimension.id, label: toDimensionLabel(dimension) }));
+      setDimensionOptions(options);
+      await loadFundingData(options);
     } catch (error) {
       setDimensionError(getErrorDetails(error));
     } finally {
       setDimensionLoading(false);
     }
+  }
+
+
+  async function loadFundingData(options: DimensionOption[]) {
+    const byId = new Map(options.map((option) => [option.id, option.label]));
+    const { budgets: budgetRecords, allocations: allocationRecords } = await fetchBudgetData();
+    const nextBudgets: BudgetRow[] = budgetRecords.map((budget) => {
+      const allocations = allocationRecords
+        .filter((allocation) => allocation.allocatedFromDimensionId === budget.businessDimensionId && allocation.budgetPlanId === budget.budgetPlanId)
+        .map((allocation) => ({
+          id: allocation.id,
+          businessDimensionId: allocation.allocatedToDimensionId,
+          businessDimensionLabel: byId.get(allocation.allocatedToDimensionId) ?? allocation.allocatedToDimensionId,
+          allocatedFrom: byId.get(allocation.allocatedFromDimensionId) ?? allocation.allocatedFromDimensionId,
+          amount: allocation.amount,
+        }));
+      return {
+        id: budget.id,
+        businessDimensionId: budget.businessDimensionId,
+        businessDimensionLabel: byId.get(budget.businessDimensionId) ?? budget.businessDimensionId,
+        budgetPlan: budget.budgetPlanName || budget.budgetPlanId,
+        budgetAmount: budget.amount,
+        canAllocate: true,
+        allocations,
+      };
+    });
+    setBudgets(nextBudgets);
   }
 
   const toggleExpanded = (budgetId: string) => {
@@ -172,7 +181,8 @@ export function BudgetsPage() {
     setAllocationModalId(null);
   };
 
-  const deleteBudget = (budgetId: string) => {
+  const deleteBudget = async (budgetId: string) => {
+    await deleteBudgetApi(budgetId);
     setBudgets((current) => current.filter((budget) => budget.id !== budgetId));
     setExpandedIds((current) => {
       const next = new Set(current);
@@ -181,7 +191,8 @@ export function BudgetsPage() {
     });
   };
 
-  const deleteAllocation = (budgetId: string, allocationId: string) => {
+  const deleteAllocation = async (budgetId: string, allocationId: string) => {
+    await deleteAllocationApi(allocationId);
     setBudgets((current) => current.map((budget) => {
       if (budget.id !== budgetId) return budget;
       return {
@@ -191,7 +202,7 @@ export function BudgetsPage() {
     }));
   };
 
-  const saveBudget = () => {
+  const saveBudget = async () => {
     const parsedAmount = Number(budgetForm.budgetAmount.replace(/,/g, ''));
     const selectedDimensionLabel = dimensionLabelById.get(budgetForm.businessDimensionId);
 
@@ -200,8 +211,14 @@ export function BudgetsPage() {
     }
 
     if (budgetModalMode === 'create') {
+      const saved = await createBudget({
+        businessDimensionId: budgetForm.businessDimensionId,
+        budgetPlanId: budgetForm.budgetPlan.trim(),
+        budgetPlanName: budgetForm.budgetPlan.trim(),
+        amount: parsedAmount,
+      });
       const createdBudget: BudgetRow = {
-        id: `b-${Date.now()}`,
+        id: saved.id,
         businessDimensionId: budgetForm.businessDimensionId,
         businessDimensionLabel: selectedDimensionLabel,
         budgetPlan: budgetForm.budgetPlan.trim(),
@@ -215,6 +232,12 @@ export function BudgetsPage() {
     }
 
     if (!budgetModalId) return;
+    await updateBudget(budgetModalId, {
+      businessDimensionId: budgetForm.businessDimensionId,
+      budgetPlanId: budgetForm.budgetPlan.trim(),
+      budgetPlanName: budgetForm.budgetPlan.trim(),
+      amount: parsedAmount,
+    });
     setBudgets((current) => current.map((budget) => (budget.id === budgetModalId
       ? {
         ...budget,
@@ -228,7 +251,7 @@ export function BudgetsPage() {
     closeBudgetModal();
   };
 
-  const saveAllocation = () => {
+  const saveAllocation = async () => {
     if (!allocationModalBudgetId || !selectedBudgetForAllocation || !allocationModalMode) return;
     const parsedAmount = Number(allocationForm.amount.replace(/,/g, ''));
     const selectedDimensionLabel = dimensionLabelById.get(allocationForm.businessDimensionId);
@@ -236,10 +259,15 @@ export function BudgetsPage() {
       return;
     }
 
-    setBudgets((current) => current.map((budget) => {
-      if (budget.id !== allocationModalBudgetId) return budget;
-
-      if (allocationModalMode === 'edit' && allocationModalId) {
+    if (allocationModalMode === 'edit' && allocationModalId) {
+      await updateAllocation(allocationModalId, {
+        budgetPlanId: selectedBudgetForAllocation.budgetPlan,
+        allocatedFromDimensionId: selectedBudgetForAllocation.businessDimensionId,
+        allocatedToDimensionId: allocationForm.businessDimensionId,
+        amount: parsedAmount,
+      });
+      setBudgets((current) => current.map((budget) => {
+        if (budget.id !== allocationModalBudgetId) return budget;
         return {
           ...budget,
           allocations: budget.allocations.map((allocation) => (allocation.id === allocationModalId
@@ -251,17 +279,25 @@ export function BudgetsPage() {
             }
             : allocation)),
         };
-      }
-
+      }));
+    } else {
+      const nextSaved = await createAllocation({
+        budgetPlanId: selectedBudgetForAllocation.budgetPlan,
+        allocatedFromDimensionId: selectedBudgetForAllocation.businessDimensionId,
+        allocatedToDimensionId: allocationForm.businessDimensionId,
+        amount: parsedAmount,
+      });
       const nextAllocation: AllocationRow = {
-        id: `a-${Date.now()}`,
+        id: nextSaved.id,
         businessDimensionId: allocationForm.businessDimensionId,
         businessDimensionLabel: selectedDimensionLabel,
         allocatedFrom: selectedBudgetForAllocation.businessDimensionLabel,
         amount: parsedAmount,
       };
-      return { ...budget, allocations: [...budget.allocations, nextAllocation] };
-    }));
+      setBudgets((current) => current.map((budget) => (
+        budget.id === allocationModalBudgetId ? { ...budget, allocations: [...budget.allocations, nextAllocation] } : budget
+      )));
+    }
 
     setExpandedIds((current) => new Set([...current, allocationModalBudgetId]));
     closeAllocationModal();

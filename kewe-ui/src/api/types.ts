@@ -240,3 +240,20 @@ export interface FundingSnapshot {
     chargingRemainingBeforeReq?: number;
   };
 }
+
+
+export interface BudgetRecord {
+  id: string;
+  businessDimensionId: string;
+  budgetPlanId: string;
+  budgetPlanName: string;
+  amount: number;
+}
+
+export interface AllocationRecord {
+  id: string;
+  budgetPlanId: string;
+  allocatedFromDimensionId: string;
+  allocatedToDimensionId: string;
+  amount: number;
+}

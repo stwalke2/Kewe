@@ -83,4 +83,17 @@ class ChargingLocationsIntegrationTest {
                 .andExpect(jsonPath("$[?(@.code == 'CC0003')]").doesNotExist())
                 .andExpect(jsonPath("$.length()").value(2));
     }
+
+    @Test
+    void debugEndpointShouldExposeJoinDiagnostics() throws Exception {
+        mockMvc.perform(get("/api/debug/charging-locations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.dimensionsCount").value(3))
+                .andExpect(jsonPath("$.budgetsCount").value(1))
+                .andExpect(jsonPath("$.allocationsCount").value(1))
+                .andExpect(jsonPath("$.eligibleFromBudgetIds.length()").value(1))
+                .andExpect(jsonPath("$.eligibleFromAllocDestIds.length()").value(1))
+                .andExpect(jsonPath("$.eligibleFinal.length()").value(2));
+    }
+
 }

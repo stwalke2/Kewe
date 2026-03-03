@@ -249,3 +249,31 @@ export async function fetchFundingSnapshot(chargingDimensionId: string, budgetPl
   if (proposedAmount !== undefined) query.set('proposedAmount', String(proposedAmount));
   return request<import('./api/types').FundingSnapshot>(`/funding-snapshot?${query.toString()}`);
 }
+
+export async function fetchBudgetData() {
+  return request<{ budgets: import('./api/types').BudgetRecord[]; allocations: import('./api/types').AllocationRecord[] }>('/budgets/all');
+}
+
+export async function createBudget(payload: { businessDimensionId: string; budgetPlanId: string; budgetPlanName: string; amount: number; }) {
+  return request<import('./api/types').BudgetRecord>('/budgets', { method: 'POST', body: toBody(payload) });
+}
+
+export async function updateBudget(budgetId: string, payload: { businessDimensionId: string; budgetPlanId: string; budgetPlanName: string; amount: number; }) {
+  return request<import('./api/types').BudgetRecord>(`/budgets/${budgetId}`, { method: 'PUT', body: toBody(payload) });
+}
+
+export async function deleteBudget(budgetId: string) {
+  return request<void>(`/budgets/${budgetId}`, { method: 'DELETE' });
+}
+
+export async function createAllocation(payload: { budgetPlanId: string; allocatedFromDimensionId: string; allocatedToDimensionId: string; amount: number; }) {
+  return request<import('./api/types').AllocationRecord>('/allocations', { method: 'POST', body: toBody(payload) });
+}
+
+export async function updateAllocation(allocationId: string, payload: { budgetPlanId: string; allocatedFromDimensionId: string; allocatedToDimensionId: string; amount: number; }) {
+  return request<import('./api/types').AllocationRecord>(`/allocations/${allocationId}`, { method: 'PUT', body: toBody(payload) });
+}
+
+export async function deleteAllocation(allocationId: string) {
+  return request<void>(`/allocations/${allocationId}`, { method: 'DELETE' });
+}
