@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -17,6 +18,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -94,6 +96,58 @@ class ChargingLocationsIntegrationTest {
                 .andExpect(jsonPath("$.eligibleFromBudgetIds.length()").value(1))
                 .andExpect(jsonPath("$.eligibleFromAllocDestIds.length()").value(1))
                 .andExpect(jsonPath("$.eligibleFinal.length()").value(2));
+    }
+
+    @Test
+    void budgetCreatedThroughApiShouldPersistAndBeUsedByChargingLocations() throws Exception {
+        allocationRepository.deleteAll();
+        budgetRepository.deleteAll();
+        businessObjectRepository.deleteAll();
+        typeRepository.deleteAll();
+
+        BusinessObjectType cc = new BusinessObjectType();
+        cc.setCode("COST_CENTER"); cc.setName("Cost Center"); cc.setStatus("Active"); cc.setObjectKind("Business Dimension");
+        typeRepository.save(cc);
+
+        String createdDimensionId = mockMvc.perform(post("/api/business-object-types/objects")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "typeCode": "COST_CENTER",
+                                  "objectKind": "Business Dimension",
+                                  "code": "CC0100",
+                                  "name": "Physics",
+                                  "status": "Active"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+        String dimensionId = new com.fasterxml.jackson.databind.ObjectMapper().readTree(createdDimensionId).get("id").asText();
+
+        mockMvc.perform(post("/api/budgets")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "businessDimensionId": "%s",
+                                  "budgetPlanId": "FY26-OPERATING",
+                                  "budgetPlanName": "FY26 Operating",
+                                  "amount": 12345
+                                }
+                                """.formatted(dimensionId)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/debug/charging-locations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budgetsCount").value(1))
+                .andExpect(jsonPath("$.allocationsCount").value(0));
+
+        mockMvc.perform(get("/api/charging-locations"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.code == 'CC0100')]").exists())
+                .andExpect(jsonPath("$.length()").value(1));
     }
 
 }

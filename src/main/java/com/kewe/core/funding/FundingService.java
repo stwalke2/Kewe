@@ -7,13 +7,13 @@ import com.kewe.core.businessobjects.BusinessObjectTypeRepository;
 import org.bson.Document;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -27,18 +27,15 @@ public class FundingService {
     private final AllocationRecordRepository allocationRepository;
     private final BusinessObjectRepository businessObjectRepository;
     private final BusinessObjectTypeRepository businessObjectTypeRepository;
-    private final MongoTemplate mongoTemplate;
 
     public FundingService(BudgetRecordRepository budgetRepository,
                           AllocationRecordRepository allocationRepository,
                           BusinessObjectRepository businessObjectRepository,
-                          BusinessObjectTypeRepository businessObjectTypeRepository,
-                          MongoTemplate mongoTemplate) {
+                          BusinessObjectTypeRepository businessObjectTypeRepository) {
         this.budgetRepository = budgetRepository;
         this.allocationRepository = allocationRepository;
         this.businessObjectRepository = businessObjectRepository;
         this.businessObjectTypeRepository = businessObjectTypeRepository;
-        this.mongoTemplate = mongoTemplate;
     }
 
     public List<ChargingLocationDto> findChargingLocations(String budgetPlanId) {
@@ -79,20 +76,18 @@ public class FundingService {
             }
         }
 
-        List<Document> budgets = readCollection("budgets");
-        List<Document> allocations = readCollection("allocations");
-        List<Document> filteredBudgets = filterByBudgetPlan(budgets, budgetPlanId);
-        List<Document> filteredAllocations = filterByBudgetPlan(allocations, budgetPlanId);
+        List<BudgetRecord> budgets = filterBudgetsByPlan(budgetRepository.findAll(), budgetPlanId);
+        List<AllocationRecord> allocations = filterAllocationsByPlan(allocationRepository.findAll(), budgetPlanId);
 
         Set<String> eligibleFromBudgetIds = new HashSet<>();
-        for (Document budget : filteredBudgets) {
-            resolveDimensionId(budget, dimensionIdByCode, "businessDimensionId", "dimensionId", "destinationDimensionId", "toBusinessDimensionId", "code")
+        for (BudgetRecord budget : budgets) {
+            resolveDimensionId(budget.getBusinessDimensionId(), dimensionIdByCode)
                     .ifPresent(eligibleFromBudgetIds::add);
         }
 
         Set<String> eligibleFromAllocDestIds = new HashSet<>();
-        for (Document allocation : filteredAllocations) {
-            resolveDimensionId(allocation, dimensionIdByCode, "allocatedToDimensionId", "toBusinessDimensionId", "businessDimensionId", "destinationDimensionId", "dimensionId", "code")
+        for (AllocationRecord allocation : allocations) {
+            resolveDimensionId(allocation.getAllocatedToDimensionId(), dimensionIdByCode)
                     .ifPresent(eligibleFromAllocDestIds::add);
         }
 
@@ -106,10 +101,10 @@ public class FundingService {
 
         return new ChargingLocationDebugDto(
                 dimensions.size(),
-                filteredBudgets.size(),
-                filteredAllocations.size(),
-                filteredBudgets.stream().limit(3).map(Document::toJson).toList(),
-                filteredAllocations.stream().limit(3).map(Document::toJson).toList(),
+                budgets.size(),
+                allocations.size(),
+                budgets.stream().limit(3).map(this::budgetDebugJson).toList(),
+                allocations.stream().limit(3).map(this::allocationDebugJson).toList(),
                 eligibleFromBudgetIds.stream().sorted().toList(),
                 eligibleFromAllocDestIds.stream().sorted().toList(),
                 eligibleFinal
@@ -267,34 +262,56 @@ public class FundingService {
         return value == null || value.isBlank();
     }
 
-    private List<Document> readCollection(String collectionName) {
-        return mongoTemplate.getCollection(collectionName).find().into(new java.util.ArrayList<>());
-    }
-
-    private List<Document> filterByBudgetPlan(List<Document> records, String budgetPlanId) {
+    private List<BudgetRecord> filterBudgetsByPlan(List<BudgetRecord> records, String budgetPlanId) {
         if (isBlank(budgetPlanId)) {
             return records;
         }
         String normalized = normalizePlanKey(budgetPlanId);
         return records.stream()
-                .filter(doc -> normalizePlanKey(doc.getString("budgetPlanId")).equals(normalized)
-                        || normalizePlanKey(doc.getString("budgetPlanName")).equals(normalized)
-                        || normalizePlanKey(doc.getString("budgetPlan")).equals(normalized))
+                .filter(record -> normalizePlanKey(record.getBudgetPlanId()).equals(normalized)
+                        || normalizePlanKey(record.getBudgetPlanName()).equals(normalized))
                 .toList();
     }
 
-    private Optional<String> resolveDimensionId(Document source, Map<String, String> dimensionIdByCode, String... keys) {
-        for (String key : keys) {
-            Object value = source.get(key);
-            if (!(value instanceof String stringValue) || stringValue.isBlank()) {
-                continue;
-            }
-            if (dimensionIdByCode.containsKey(stringValue.trim().toLowerCase())) {
-                return Optional.ofNullable(dimensionIdByCode.get(stringValue.trim().toLowerCase()));
-            }
-            return Optional.of(stringValue);
+    private List<AllocationRecord> filterAllocationsByPlan(List<AllocationRecord> records, String budgetPlanId) {
+        if (isBlank(budgetPlanId)) {
+            return records;
         }
-        return Optional.empty();
+        String normalized = normalizePlanKey(budgetPlanId);
+        return records.stream()
+                .filter(record -> normalizePlanKey(record.getBudgetPlanId()).equals(normalized))
+                .toList();
+    }
+
+    private Optional<String> resolveDimensionId(String rawIdOrCode, Map<String, String> dimensionIdByCode) {
+        if (rawIdOrCode == null || rawIdOrCode.isBlank()) {
+            return Optional.empty();
+        }
+        String normalized = rawIdOrCode.trim().toLowerCase();
+        if (dimensionIdByCode.containsKey(normalized)) {
+            return Optional.ofNullable(dimensionIdByCode.get(normalized));
+        }
+        return Optional.of(rawIdOrCode);
+    }
+
+    private String budgetDebugJson(BudgetRecord budget) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", budget.getId());
+        payload.put("businessDimensionId", budget.getBusinessDimensionId());
+        payload.put("budgetPlanId", budget.getBudgetPlanId());
+        payload.put("budgetPlanName", budget.getBudgetPlanName());
+        payload.put("amount", budget.getAmount());
+        return new Document(payload).toJson();
+    }
+
+    private String allocationDebugJson(AllocationRecord allocation) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("id", allocation.getId());
+        payload.put("budgetPlanId", allocation.getBudgetPlanId());
+        payload.put("allocatedFromDimensionId", allocation.getAllocatedFromDimensionId());
+        payload.put("allocatedToDimensionId", allocation.getAllocatedToDimensionId());
+        payload.put("amount", allocation.getAmount());
+        return new Document(payload).toJson();
     }
 
     public record ChargingLocationDto(String id, String code, String name, String type) {}
