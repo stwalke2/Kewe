@@ -18,13 +18,16 @@ import java.util.List;
 @RequestMapping("/api")
 public class FundingController {
     private final FundingService fundingService;
+    private final FundingModelDebugService fundingModelDebugService;
     private final BudgetRecordRepository budgetRepository;
     private final AllocationRecordRepository allocationRepository;
 
     public FundingController(FundingService fundingService,
+                             FundingModelDebugService fundingModelDebugService,
                              BudgetRecordRepository budgetRepository,
                              AllocationRecordRepository allocationRepository) {
         this.fundingService = fundingService;
+        this.fundingModelDebugService = fundingModelDebugService;
         this.budgetRepository = budgetRepository;
         this.allocationRepository = allocationRepository;
     }
@@ -37,6 +40,11 @@ public class FundingController {
     @GetMapping("/debug/charging-locations")
     public FundingService.ChargingLocationDebugDto debugChargingLocations(@RequestParam(required = false) String budgetPlanId) {
         return fundingService.collectChargingLocationDebug(budgetPlanId);
+    }
+
+    @GetMapping("/debug/funding-model")
+    public FundingModelDebugService.FundingModelDebugResponse fundingModelExplorer() {
+        return fundingModelDebugService.loadFundingModel();
     }
 
     @GetMapping("/funding-snapshot")
