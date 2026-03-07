@@ -9,6 +9,7 @@ import { BusinessObjectsPage } from './pages/BusinessObjectsPage';
 import { BusinessObjectDetailPage } from './pages/BusinessObjectDetailPage';
 import { BusinessObjectCreatePage } from './pages/BusinessObjectCreatePage';
 import { BudgetsPage } from './pages/BudgetsPage';
+import { FundingModelExplorerPage } from './pages/FundingModelExplorerPage';
 import { CreateRequisitionPage } from './pages/requisitions/CreateRequisitionPage';
 
 function App() {
@@ -25,6 +26,7 @@ function App() {
         <Route path="/business-objects/new" element={<BusinessObjectCreatePage />} />
         <Route path="/business-objects/:id" element={<BusinessObjectDetailPage />} />
         <Route path="/budgets" element={<BudgetsPage />} />
+        <Route path="/debug/funding-model" element={<FundingModelExplorerPage />} />
         <Route path="/requisitions/new" element={<CreateRequisitionPage />} />
         <Route path="*" element={<Navigate to="/supplier-invoices" replace />} />
       </Routes>
