@@ -257,3 +257,98 @@ export interface AllocationRecord {
   allocatedToDimensionId: string;
   amount: number;
 }
+
+export interface FundingModelCounts {
+  businessDimensionsCount: number;
+  budgetsCount: number;
+  allocationsCount: number;
+  requisitionsCount: number;
+  requisitionLinesCount: number;
+  eligibleChargingLocationsCount: number;
+}
+
+export interface BusinessDimensionDebugRow {
+  id: string;
+  code?: string;
+  name?: string;
+  type?: string;
+  rawJson: string;
+}
+
+export interface BudgetDebugRow {
+  id: string;
+  businessDimensionId?: string;
+  businessDimensionCode?: string;
+  businessDimensionName?: string;
+  budgetPlanId?: string;
+  budgetPlanName?: string;
+  totalBudget: number;
+  amountUsed?: number;
+  status?: string;
+  rawJson: string;
+}
+
+export interface AllocationDebugRow {
+  id: string;
+  fromBusinessDimensionId?: string;
+  fromBusinessDimensionCode?: string;
+  fromBusinessDimensionName?: string;
+  toBusinessDimensionId?: string;
+  toBusinessDimensionCode?: string;
+  toBusinessDimensionName?: string;
+  budgetPlanId?: string;
+  allocatedAmount: number;
+  amountUsed?: number;
+  status?: string;
+  rawJson: string;
+}
+
+export interface RequisitionDebugRow {
+  id: string;
+  title?: string;
+  requesterName?: string;
+  memo?: string;
+  createdAt?: string;
+  rawJson: string;
+}
+
+export interface RequisitionLineDebugRow {
+  id: string;
+  requisitionId?: string;
+  requisitionTitle?: string;
+  description?: string;
+  qty: number;
+  unitPrice?: number;
+  amount: number;
+  supplier?: string;
+  chargingLocationId?: string;
+  chargingLocationCode?: string;
+  chargingLocationName?: string;
+  link?: string;
+  rawJson: string;
+}
+
+export interface EligibleChargingLocationRow {
+  id: string;
+  code?: string;
+  name?: string;
+  eligibilityReason: 'Budget' | 'Allocation Destination' | 'Both' | string;
+}
+
+export interface EligibleChargingLocationsDebug {
+  eligibleFromBudgets: EligibleChargingLocationRow[];
+  eligibleFromAllocationDestinations: EligibleChargingLocationRow[];
+  finalUnionSet: EligibleChargingLocationRow[];
+  finalEligibleCount: number;
+}
+
+export interface FundingModelDebug {
+  counts: FundingModelCounts;
+  businessDimensions: BusinessDimensionDebugRow[];
+  budgets: BudgetDebugRow[];
+  allocations: AllocationDebugRow[];
+  requisitions: RequisitionDebugRow[];
+  requisitionLines: RequisitionLineDebugRow[];
+  eligibleChargingLocations: EligibleChargingLocationsDebug;
+  integrityWarnings: string[];
+}
