@@ -277,3 +277,7 @@ export async function updateAllocation(allocationId: string, payload: { budgetPl
 export async function deleteAllocation(allocationId: string) {
   return request<void>(`/allocations/${allocationId}`, { method: 'DELETE' });
 }
+
+export async function fetchFundingModelDebug() {
+  return request<import('./api/types').FundingModelDebug>('/debug/funding-model');
+}
